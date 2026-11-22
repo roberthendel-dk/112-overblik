@@ -1,0 +1,1193 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>112-overblik</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f5f4f0;--surface:#fff;--sunken:#efede8;--ink:#1d1c1a;--muted:#736e67;--faint:#a8a39b;--line:#e8e4dd;--line2:#d8d3ca;
+  --red:#b42318;--red-soft:#fdf0ee;--amber:#975a06;--amber-soft:#fcf4e5;--green:#15744a;--green-soft:#ebf6f0;
+  --blue:#2b59c3;--blue-soft:#eef3fc;--violet:#6941c6;--violet-soft:#f4f0fc;
+  --shadow:0 1px 2px rgba(20,18,15,.04),0 3px 12px rgba(20,18,15,.035);--r:12px;
+}
+*{box-sizing:border-box}
+html{-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{border:1px solid var(--line2);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 12px;font-weight:600;cursor:pointer;transition:background .12s,border-color .12s,box-shadow .12s}
+button:hover{background:#f7f6f3;border-color:#c8c2b7}
+button.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+button.primary:hover{background:#000;border-color:#000}
+button.danger{color:var(--red);border-color:#efcdc8}
+button.danger:hover{background:var(--red-soft)}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+button.ghost:hover{background:var(--sunken);color:var(--ink)}
+button.small{font-size:12.5px;padding:5px 9px;border-radius:7px}
+button:disabled{opacity:.4;cursor:not-allowed}
+input,select,textarea{width:100%;border:1px solid var(--line2);border-radius:8px;background:#fff;padding:8px 10px;outline:none;transition:border-color .12s,box-shadow .12s}
+input:focus,select:focus,textarea:focus{border-color:#3d5fb8;box-shadow:0 0 0 3px rgba(43,89,195,.13)}
+input[type=checkbox]{width:auto;accent-color:var(--ink)}
+textarea{min-height:72px;resize:vertical}
+label{display:block;margin:12px 0 5px;font-size:12px;color:var(--muted);font-weight:600}
+a{color:var(--blue);font-weight:600;text-decoration:none}
+a:hover{text-decoration:underline}
+.tr-incident{--tc:var(--red);--tcs:var(--red-soft)}
+.tr-police{--tc:var(--blue);--tcs:var(--blue-soft)}
+.tr-court{--tc:var(--violet);--tcs:var(--violet-soft)}
+.tr-decided{--tc:var(--amber);--tcs:var(--amber-soft)}
+.tr-closed{--tc:var(--green);--tcs:var(--green-soft)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none;background:var(--tc,#999)}
+
+/* Ramme */
+.app{display:grid;grid-template-columns:236px minmax(0,1fr) 460px;min-height:100vh}
+.app.detail-closed{grid-template-columns:236px minmax(0,1fr) 0}
+.app.detail-closed .detail{display:none}
+.sidebar{background:#191816;color:#e9e6e0;padding:22px 12px 16px;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column}
+.brand{font:700 22px/1 Georgia,"Times New Roman",serif;letter-spacing:-.02em;color:#fff;display:flex;align-items:center;gap:10px;padding:0 10px}
+.brand:before{content:"";width:9px;height:9px;border-radius:50%;background:#e5484d;box-shadow:0 0 0 4px rgba(229,72,77,.2)}
+.brandline{color:#8a857d;font-size:12px;margin:8px 10px 10px;line-height:1.4}
+.sidegroup{margin:20px 10px 6px;color:#77726a;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.nav button{width:100%;display:flex;justify-content:space-between;align-items:center;margin:1px 0;background:transparent;color:#cdc8c0;border:0;text-align:left;padding:7px 10px;border-radius:7px;font-weight:500}
+.nav button:hover{background:#24221f;color:#fff}
+.nav button.active{background:#2e2b27;color:#fff;font-weight:600}
+.count{font-size:12px;color:#8a857d;font-variant-numeric:tabular-nums;font-weight:600;min-width:20px;text-align:center}
+.nav button.active .count{color:#fff}
+.count.alert{background:#e5484d;color:#fff;border-radius:999px;padding:0 7px}
+.filebox{margin-top:auto;padding:16px 10px 0;border-top:1px solid #2c2a26}
+.filebox strong{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#77726a;font-weight:600;margin-bottom:4px}
+.filebox button{width:100%;margin-top:6px;background:#24221f;border-color:#34312c;color:#e9e6e0;font-weight:500;font-size:13px}
+.filebox button:hover{background:#2e2b27;border-color:#45413b}
+.filebox button.primary{background:#fff;border-color:#fff;color:#191816;font-weight:600}
+.filebox .links{display:flex;gap:12px;margin-top:8px}
+.filebox .links button{width:auto;margin:0;padding:2px 0;background:none;border:0;color:#8a857d;font-size:12px;font-weight:500}
+.filebox .links button:hover{color:#fff;background:none}
+.status{font-size:12px;color:#9e988f;line-height:1.45;margin-top:10px}
+.status strong{color:#e9e6e0;display:inline;font-size:12px;letter-spacing:0;text-transform:none;margin:0}
+.status .notice{color:#8a857d}
+.unsaved{color:#f5b759;font-weight:600}
+.main{padding:22px 28px 40px;min-width:0}
+.top{display:flex;gap:8px;align-items:center;margin-bottom:18px}
+.search{flex:1;max-width:560px}
+.search input{padding:9px 12px 9px 36px;border-radius:9px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='m11 11 3.5 3.5'/%3E%3C/svg%3E") no-repeat 12px center}
+.top .spacer{flex:1}
+
+/* Nøgletal */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:18px;overflow:hidden}
+.kpi{background:var(--surface);padding:14px 16px;cursor:pointer;transition:background .12s}
+.kpi:hover{background:#faf9f6}
+.kpi strong{display:block;font-size:26px;font-weight:650;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.15}
+.kpi span{font-size:12.5px;color:var(--muted)}
+.kpi.alert strong{color:var(--red)}
+
+.warning{display:none;background:var(--amber-soft);border:1px solid #efd6a8;color:#6b4200;border-radius:var(--r);padding:12px 14px;margin-bottom:16px}
+.warning.show{display:flex;gap:12px;justify-content:space-between;align-items:flex-start}
+.warning strong{display:block;color:#3d2500;margin-bottom:2px}
+.warning p{margin:0;font-size:13px;line-height:1.4}
+
+/* Paneler */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px 18px 14px;margin-bottom:16px;min-width:0}
+.panel h2{margin:0;font-size:15px;font-weight:650;letter-spacing:-.01em}
+.panel .sub{font-size:12.5px;color:var(--muted);margin:2px 0 12px}
+.panelhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+.split .panel{margin-bottom:16px}
+
+/* Forløb */
+.board{display:grid;grid-template-columns:repeat(5,minmax(190px,1fr));gap:10px;overflow-x:auto;padding-bottom:2px}
+.col{background:var(--sunken);border-radius:10px;padding:8px;min-height:110px}
+.col h3{margin:4px 6px 10px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.col h3 .n{margin-left:auto}
+.n{background:rgba(0,0,0,.06);border-radius:999px;padding:0 7px;font-size:11.5px;color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+.mini{background:#fff;border:1px solid var(--line);border-left:3px solid var(--tc);border-radius:8px;padding:10px 11px;margin-bottom:7px;cursor:pointer;transition:box-shadow .12s}
+.mini:hover{box-shadow:var(--shadow)}
+.mini.active{box-shadow:0 0 0 2px var(--ink)}
+.mini .t{font-weight:600;font-size:13.5px;line-height:1.3;overflow-wrap:anywhere}
+.mini .meta{font-size:12px;margin-top:2px}
+.mini .badges{margin-top:7px}
+.mini .badge{white-space:normal}
+.mini .adv{margin-top:6px;margin-left:-6px}
+.colmore{margin:2px}
+
+/* Agenda */
+.aghead{font-size:12px;font-weight:600;color:var(--muted);margin:14px 0 2px;padding:0 6px 5px;border-bottom:1px solid var(--line)}
+.aghead:first-child{margin-top:0}
+.aghead.late{color:var(--red)}
+.agrow{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 6px;border-radius:8px;cursor:pointer}
+.agrow:hover{background:#faf9f6}
+.agrow .agt{font-weight:600}
+.agrow .agc{color:var(--muted)}
+.agrow .meta{margin-top:1px}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 0;border-radius:5px;text-align:center;background:var(--sunken);color:var(--muted)}
+.tag.k-court{background:var(--violet-soft);color:var(--violet)}
+.tag.k-deadline{background:var(--amber-soft);color:var(--amber)}
+.tag.k-follow{background:var(--blue-soft);color:var(--blue)}
+.agrow.late .tag{background:var(--red-soft);color:var(--red)}
+.gap{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 6px;border-top:1px solid var(--line);cursor:pointer}
+.gap:first-child{border-top:0}
+.gap:hover{background:#faf9f6}
+.gap strong{font-weight:600}
+
+/* Sagsliste */
+.viewtitle{font-size:18px;font-weight:650;letter-spacing:-.015em;margin:2px 0 12px}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar .grow{flex:1}
+.toolbar select{width:auto;padding:6px 10px;font-size:13px}
+.casegrid{display:grid;gap:8px}
+.casecard{background:#fff;border:1px solid var(--line);border-left:3px solid var(--tc);border-radius:10px;padding:14px 16px 12px;box-shadow:var(--shadow);transition:box-shadow .12s}
+.casecard:hover{box-shadow:0 2px 4px rgba(20,18,15,.05),0 8px 22px rgba(20,18,15,.06)}
+.casecard.active{box-shadow:0 0 0 2px var(--ink)}
+.casehead{display:flex;gap:12px;align-items:flex-start}
+.casehead input{margin-top:4px}
+.cbody{flex:1;min-width:0}
+.title{font-size:16px;font-weight:650;letter-spacing:-.01em;line-height:1.25;cursor:pointer;overflow-wrap:anywhere}
+.title:hover{text-decoration:underline;text-underline-offset:3px}
+.cstatus{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+.meta{font-size:12.5px;color:var(--muted);line-height:1.4;margin-top:3px;overflow-wrap:anywhere}
+.phase{display:flex;align-items:center;gap:12px;margin:12px 0 0 26px}
+.progress{display:flex;gap:3px;flex:1;max-width:340px}
+.progress i{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.progress i.done{background:var(--tc)}
+.phase span{font-size:12.5px;font-weight:600;white-space:nowrap}
+.phase em{font-style:normal;color:var(--faint);font-weight:500;margin-left:4px}
+.cfoot{display:flex;gap:10px;justify-content:space-between;align-items:flex-end;margin:10px 0 0 26px}
+.cfoot .badges{margin-top:0}
+.cfoot .actions{margin-top:0;flex:none}
+.badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.badge{font-size:11.5px;font-weight:600;border-radius:6px;padding:2px 7px;background:var(--sunken);color:#504b45;white-space:nowrap;line-height:1.5}
+.badge.blue{background:var(--blue-soft);color:var(--blue)}
+.badge.violet{background:var(--violet-soft);color:var(--violet)}
+.badge.red{background:var(--red-soft);color:var(--red)}
+.badge.yellow{background:var(--amber-soft);color:var(--amber)}
+.badge.green{background:var(--green-soft);color:var(--green)}
+.empty{border:1px dashed var(--line2);border-radius:10px;padding:18px;text-align:center;color:var(--muted);font-size:13px}
+
+/* Sagsfane */
+.detail{background:#fbfaf8;border-left:1px solid var(--line);padding:22px 20px 40px;position:sticky;top:0;height:100vh;overflow:auto}
+.case-titlebar{padding:0 2px 16px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+.case-titlebar .kicker{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.case-titlebar h1{font-size:22px;font-weight:650;letter-spacing:-.025em;line-height:1.2;margin:0;overflow-wrap:anywhere}
+.stagebar{display:flex;flex-wrap:wrap;gap:4px;margin-top:14px}
+button.stage{border:1px solid var(--line);background:#fff;color:var(--faint);font-size:11.5px;font-weight:500;padding:3px 8px;border-radius:6px}
+button.stage.done{color:#4a4640;background:var(--sunken);border-color:var(--sunken)}
+button.stage.on{background:var(--tc);border-color:var(--tc);color:#fff;font-weight:600}
+button.stage:hover{border-color:var(--ink)}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-top:16px;font-size:13px}
+.facts .k{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:1px}
+.followbar{display:flex;gap:2px;align-items:center;flex-wrap:wrap;margin-top:16px}
+.followbar span{font-size:12px;font-weight:600;color:var(--muted);margin-right:2px}
+.followbar input{width:128px;padding:5px 7px;font-size:13px}
+.followbar button.small{padding:5px 7px}
+.savebar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.savebar .grow{flex:1}
+.dirty{font-size:12.5px;font-weight:600;color:var(--amber)}
+.saved{font-size:12.5px;font-weight:600;color:var(--green)}
+details{background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden}
+summary{list-style:none;cursor:pointer;padding:11px 14px;font-weight:600;display:flex;align-items:center;gap:6px;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary:hover{background:#fcfbf9}
+summary:after{content:"";margin-left:auto;width:6px;height:6px;border-right:1.5px solid var(--faint);border-bottom:1.5px solid var(--faint);transform:rotate(-45deg);transition:transform .15s}
+details[open] summary:after{transform:rotate(45deg)}
+details[open] summary{border-bottom:1px solid var(--line)}
+.sectionbody{padding:4px 14px 14px}
+.sectionbody > button,.sectionbody .actions > button:not(.small){margin-top:12px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.row3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:10px}
+.field{min-width:0}
+.inline{display:flex;gap:6px;align-items:center}
+.inline > div{flex:1;min-width:0}
+.inline button{white-space:nowrap}
+.item{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;margin-top:8px;overflow:hidden}
+.item strong{font-weight:600}
+.item p{margin:6px 0;line-height:1.45}
+.item .badge{margin-left:4px}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.notice{font-size:12px;color:var(--muted);line-height:1.4;margin-top:8px}
+.subhead{font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+
+/* Tidslinje */
+.timeline{position:relative;margin:10px 0 4px 5px;padding-left:18px;border-left:1px solid var(--line2)}
+.tl{position:relative;margin-bottom:13px;--kc:#9b958c}
+.tl:before{content:"";position:absolute;left:-23.5px;top:5px;width:9px;height:9px;border-radius:50%;background:var(--kc);box-shadow:0 0 0 3px #fff}
+.tl.k-incident{--kc:var(--red)}.tl.k-police{--kc:var(--blue)}.tl.k-court{--kc:var(--violet)}.tl.k-phase{--kc:var(--ink)}
+.tl.k-deadline,.tl.k-follow{--kc:var(--amber)}.tl.k-access{--kc:var(--green)}
+.tl.future:before{background:#fff;border:1.5px solid var(--kc);width:7px;height:7px}
+.tl .d{font-size:11.5px;color:var(--muted)}
+.tl strong{font-weight:600}
+.tl .meta{margin-top:1px}
+.nowline{position:relative;margin:2px 0 13px;font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.06em}
+.nowline:before{content:"";position:absolute;left:-25px;top:6px;width:14px;height:2px;background:var(--red);border-radius:1px}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(6px);background:var(--ink);color:#fff;padding:9px 14px;border-radius:9px;font-weight:600;font-size:13px;opacity:0;transition:opacity .18s,transform .18s;pointer-events:none;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.toast.show{opacity:1;transform:translateX(-50%)}
+@media(max-width:1280px){.app,.app.detail-closed{grid-template-columns:220px minmax(0,1fr)}.detail{position:relative;height:auto;grid-column:1/-1;border-left:0;border-top:1px solid var(--line)}}
+@media(max-width:760px){.app{display:block}.sidebar{height:auto;position:relative}.row,.row3,.facts{grid-template-columns:1fr}.main{padding:16px}.phase,.cfoot{margin-left:0}.cfoot{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<div class="app" id="appShell">
+  <aside class="sidebar">
+    <div class="brand">112-overblik</div>
+    <div class="brandline">Fra hændelse til dom · v3.1<br>Udviklet af RH 🤓</div>
+
+    <div class="nav">
+      <div class="sidegroup">Overblik</div>
+      <button data-view="dashboard" class="active">Dashboard <span class="count" id="navAll">0</span></button>
+      <button data-view="calendar">Kalender <span class="count" id="navCal">0</span></button>
+      <button data-view="followup">Opfølgning <span class="count" id="navFollow">0</span></button>
+      <div class="sidegroup">Sager</div>
+      <button data-view="all">Alle sager <span class="count" id="navList">0</span></button>
+      <button data-view="open">Åbne <span class="count" id="navOpen">0</span></button>
+      <button data-view="deadline">Frister <span class="count" id="navLate">0</span></button>
+      <button data-view="police">Hos politiet <span class="count" id="navPolice">0</span></button>
+      <button data-view="court">I retten <span class="count" id="navCourt">0</span></button>
+      <button data-view="access">Aktindsigter <span class="count" id="navAccess">0</span></button>
+      <button data-view="closed">Afsluttede <span class="count" id="navClosed">0</span></button>
+      <button data-view="trash">Papirkurv <span class="count" id="navTrash">0</span></button>
+    </div>
+
+    <div class="filebox">
+      <strong>Excel-database</strong>
+      <button id="saveBtn" class="primary" disabled>Gem til Excel</button>
+      <button id="openBtn">Åbn Excel-fil</button>
+      <button id="reopenBtn">Genåbn seneste fil</button>
+      <div class="links"><button id="downloadBtn" disabled>Download kopi</button><button id="forgetRecentBtn">Glem seneste fil</button></div>
+      <input id="fileInput" type="file" accept=".xlsx,.xls" style="display:none">
+      <div class="status" id="fileStatus">Ingen fil åbnet.</div>
+      <div class="status" id="saveState"></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="top">
+      <div class="search"><input id="search" placeholder="Søg i sager, navne, journalnumre, dokumenter …"></div>
+      <div class="spacer"></div>
+      <button class="ghost" id="toggleDetailBtn">Luk sagsfane</button>
+      <button class="primary" id="newBtn">+ Ny 112-sag</button>
+    </div>
+
+    <section class="kpis" id="kpis"></section>
+
+    <div class="warning" id="excelWarning">
+      <div>
+        <strong>Ingen Excel-fil er indlæst</strong>
+        <p id="excelWarningText">Åbn den fælles Excel-database, før du arbejder videre.</p>
+      </div>
+      <button class="ghost small" id="dismissExcelWarningBtn">Luk</button>
+    </div>
+
+    <section id="overview"></section>
+
+    <div id="listWrap">
+      <div class="viewtitle" id="viewTitle"></div>
+      <div class="toolbar">
+        <button class="small" id="selectVisibleBtn">Vælg viste</button>
+        <button class="ghost small" id="clearSelectBtn">Ryd valg</button>
+        <button class="danger small" id="deleteSelectedBtn">Flyt til papirkurv</button>
+        <button class="small" id="restoreSelectedBtn" style="display:none">Gendan markerede</button>
+        <span class="notice" id="selectedText">0 markerede</span>
+        <div class="grow"></div>
+        <select id="sortBy">
+          <option value="updated">Senest redigeret</option>
+          <option value="deadline">Næste frist</option>
+          <option value="court">Næste retsmøde</option>
+          <option value="incident">Gerningsdato</option>
+          <option value="stage">Fase</option>
+          <option value="title">Titel A-Å</option>
+        </select>
+      </div>
+      <section class="casegrid" id="caseList"></section>
+    </div>
+  </main>
+
+  <aside class="detail" id="detail"></aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<datalist id="politikredse">
+  <option>Nordjyllands Politi</option><option>Østjyllands Politi</option><option>Midt- og Vestjyllands Politi</option>
+  <option>Sydøstjyllands Politi</option><option>Syd- og Sønderjyllands Politi</option><option>Fyns Politi</option>
+  <option>Sydsjællands og Lolland-Falsters Politi</option><option>Midt- og Vestsjællands Politi</option><option>Nordsjællands Politi</option>
+  <option>Københavns Vestegns Politi</option><option>Københavns Politi</option><option>Bornholms Politi</option>
+  <option>Grønlands Politi</option><option>Færøernes Politi</option>
+</datalist>
+
+<script>
+"use strict";
+/* ---------- Hjælpere ---------- */
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? "").replace(/[&<>'"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));
+const jq = v => esc(JSON.stringify(String(v ?? "")));            // sikker streng i onclick="..."
+const uid = p => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today = () => ymd(new Date());                              // lokal dato (ikke UTC)
+const nowIso = () => new Date().toISOString();
+const parseDate = s => { const m = String(s ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2]-1, +m[3]) : null; };
+const daysUntil = s => { const x = parseDate(s); if(!x) return null; return Math.round((x - parseDate(today())) / 86400000); };
+const addDays = (s,n) => { const d = parseDate(s); return d ? ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate()+n)) : ""; };
+const fmtDate = s => { const d = parseDate(s); return d ? d.toLocaleDateString("da-DK",{weekday:"short",day:"numeric",month:"short",year:"numeric"}) : String(s ?? ""); };
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+const trunc = (s,n) => { s = String(s ?? ""); return s.length > n ? s.slice(0,n-1) + "…" : s; };
+
+/* Danske helligdage – bruges til at tælle arbejdsdage */
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da);}
+const holidayCache = {};
+function holidays(y){
+  if(holidayCache[y]) return holidayCache[y];
+  const e = easter(y), off = n => ymd(new Date(e.getFullYear(), e.getMonth(), e.getDate()+n));
+  return holidayCache[y] = new Set([`${y}-01-01`, off(-3), off(-2), off(0), off(1), off(39), off(49), off(50), `${y}-06-05`, `${y}-12-24`, `${y}-12-25`, `${y}-12-26`, `${y}-12-31`]);
+}
+const isWorkday = d => d.getDay() !== 0 && d.getDay() !== 6 && !holidays(d.getFullYear()).has(ymd(d));
+function addWorkdays(s,n){ let d = parseDate(s) || parseDate(today()); let k = 0; while(k < n){ d = new Date(d.getFullYear(), d.getMonth(), d.getDate()+1); if(isWorkday(d)) k++; } return ymd(d); }
+function nextWorkday(s){ let d = parseDate(s); if(!d) return s; while(!isWorkday(d)) d = new Date(d.getFullYear(), d.getMonth(), d.getDate()+1); return ymd(d); }
+
+/* ---------- Lister og forløb ---------- */
+const lists = {
+  stages:["Tip / hændelse","Oprettet hos politiet","Under efterforskning","Anholdt / grundlovsforhør","Sigtet","Tiltalt","Berammet","Hovedforhandling","Afgjort","Anket","Afsluttet"],
+  statuses:["Aktiv","Overvåges","Kladde","Sendt","Afventer svar","Rykker sendt","Delvist svar","Fuldt svar","Afslag","Klaget","På pause","Afsluttet"],
+  types:["112-hændelse","Politisag","Aktindsigt","Retssag","Kommune/forvaltning","Andet"],
+  roles:["Mulig gerningsperson","Mistænkt","Sigtet","Tiltalt","Forsvarer","Anklager","Bistandsadvokat","Forurettet","Pårørende","Dommer","Vidne","Kilde","Politiet","Pressetalsperson","Andet"]
+};
+const tracks = [
+  {key:"incident", label:"Hændelse",      icon:"🚨", stages:["Tip / hændelse"]},
+  {key:"police",   label:"Hos politiet",  icon:"🚓", stages:["Oprettet hos politiet","Under efterforskning","Anholdt / grundlovsforhør","Sigtet"]},
+  {key:"court",    label:"Anklage & ret", icon:"⚖️", stages:["Tiltalt","Berammet","Hovedforhandling"]},
+  {key:"decided",  label:"Afgjort / anke",icon:"🔨", stages:["Afgjort","Anket"]},
+  {key:"closed",   label:"Afsluttet",     icon:"✅", stages:["Afsluttet"]}
+];
+const CLOSED_STATUS = ["Afsluttet","Fuldt svar"];
+const hardDeadlines = [["Frist","Svarfrist",false],["Faengslingsfrist","Fængslingsfrist",false],["Ankefrist","Ankefrist",true],["Klagefrist","Klagefrist",true]]; // true = udløber (forsvinder når den er passeret)
+const KIND_LABEL = {incident:"Hændelse",police:"Politi",court:"Ret",access:"Aktind.",deadline:"Frist",follow:"Opfølg.",phase:"Fase",log:"Log",doc:"Dok.",article:"Artikel"};
+const tag = k => `<span class="tag k-${k}">${KIND_LABEL[k] || ""}</span>`;
+
+/* ---------- Tilstand ---------- */
+const SHEETS = {sager:"Sager",journalnumre:"Journalnumre",forhold:"Forhold",artikler:"Artikler",dokumenter:"Dokumenter",relationer:"Relationer",retsmoeder:"Retsmoeder",personer:"Personer",log:"Log",faseforloeb:"Faseforloeb"};
+let db = Object.fromEntries(Object.keys(SHEETS).map(k => [k,[]]));
+let currentId = "";
+let currentView = "dashboard";
+let selected = new Set();
+let visibleIds = [];
+let dirty = false;
+let fileHandle = null;
+let fileName = "";
+let detailOpen = localStorage.getItem("112overblik_detailOpen") !== "false";
+let recentFileName = localStorage.getItem("112overblik_recentFileName") || "";
+let workbookLoaded = false;
+let excelWarningDismissed = localStorage.getItem("112overblik_excelWarningDismissed") === "true";
+let openSections = new Set(JSON.parse(localStorage.getItem("112overblik_openSections") || '["tidslinje","haendelse"]'));
+let lastDetailId = "";
+let tplTexts = [];
+
+function rows(sheet,id=currentId){ return (db[sheet]||[]).filter(r => r.SagsID === id); }
+function current(){ return db.sager.find(s => s.SagsID === currentId); }
+function caseById(id){ return db.sager.find(s => s.SagsID === id); }
+function activeCases(){ return db.sager.filter(s => s.Slettet !== "Ja"); }
+function isClosed(c){ return CLOSED_STATUS.includes(c.Status) || c.Fase === "Afsluttet"; }
+function trackOf(c){
+  if(isClosed(c)) return "closed";
+  const t = tracks.find(t => t.stages.includes(c.Fase));
+  if(t) return t.key;
+  if(c.Sagstype === "Retssag") return "court";
+  if(c.Sagstype === "Politisag") return "police";
+  return "incident";
+}
+function setDirty(v=true){
+  dirty = v;
+  const el = $("dirtyState");
+  if(el){ el.textContent = v ? "Ikke gemt" : "Gemt"; el.className = v ? "dirty" : "saved"; }
+  $("saveState").innerHTML = v ? '<span class="unsaved">● Ændringer er ikke gemt i Excel</span>' : "";
+}
+function flash(msg){ const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(flash._t); flash._t = setTimeout(() => t.classList.remove("show"), 1800); }
+
+/* ---------- Frister, begivenheder, huller ---------- */
+function caseDeadlines(c, withFollowup=false){
+  if(c.Slettet === "Ja" || isClosed(c)) return [];
+  const f = withFollowup ? [...hardDeadlines, ["Paamindelse","Opfølgning",false]] : hardDeadlines;
+  return f.map(([k,l,expires]) => ({field:k, label:l, date:String(c[k] ?? "").slice(0,10), days:daysUntil(c[k]), expires}))
+          .filter(x => x.days !== null && !(x.expires && x.days < 0))
+          .sort((a,b) => a.days - b.days);
+}
+function nextCourt(c){
+  const t = today();
+  return rows("retsmoeder", c.SagsID).filter(r => String(r.Dato ?? "").slice(0,10) >= t && parseDate(r.Dato))
+    .sort((a,b) => String(a.Dato).localeCompare(String(b.Dato)) || String(a.Starttid ?? "").localeCompare(String(b.Starttid ?? "")))[0];
+}
+function dlBadge(d){
+  const cls = d.days < 0 ? "red" : d.days <= 7 ? "yellow" : "green";
+  const txt = d.days < 0 ? `overskredet ${-d.days} d.` : d.days === 0 ? "i dag" : d.days === 1 ? "i morgen" : `om ${d.days} d.`;
+  return `<span class="badge ${cls}">${esc(d.label)} ${txt}</span>`;
+}
+function followBadge(c){
+  const d = daysUntil(c.Paamindelse);
+  if(d === null || isClosed(c)) return "";
+  if(d <= 0) return `<span class="badge blue">Opfølgning ${d === 0 ? "i dag" : "overskredet"}</span>`;
+  return d <= 7 ? `<span class="badge blue">Opfølgning om ${d} d.</span>` : "";
+}
+
+/* Alle daterede begivenheder i en sag – bruges til tidslinjen */
+function caseEvents(c){
+  const ev = [];
+  const add = (date,kind,title,meta="",time="") => { const s = String(date ?? "").slice(0,10); if(parseDate(s)) ev.push({date:s,kind,title,meta,time}); };
+  add(c.Haendelsesdato,"incident","Hændelse",[c.Sted,c.Beskrivelse].filter(Boolean).join(" · "),c.Gerningstid);
+  add(c.KendtHosPolitiet,"police","Oprettet hos politiet",c.PolitietsJournalnummer ? "J.nr. "+c.PolitietsJournalnummer : "");
+  add(c.AnholdtDato,"police","Anholdelse");
+  add(c.Grundlovsforhoer,"court","Grundlovsforhør",c.Varetaegt && c.Varetaegt !== "Nej" ? "Varetægt: "+c.Varetaegt : "");
+  add(c.SigtelsesDato,"police","Sigtelse",c.Sigtelse);
+  add(c.TiltaleDato,"court","Tiltale rejst",c.Anklagemyndighed);
+  add(c.DomDato,"court","Dom",[c.Udfald,c.Straf].filter(Boolean).join(" · "));
+  add(c.Sendt,"access","Aktindsigt sendt",c.Myndighed);
+  [...hardDeadlines,["Paamindelse","Opfølgning"]].forEach(([f,l]) => add(c[f], f==="Paamindelse" ? "follow" : "deadline", l));
+  rows("faseforloeb",c.SagsID).forEach(r => add(r.Dato,"phase","Fase: "+r.Fase,r.Note));
+  rows("retsmoeder",c.SagsID).forEach(r => add(r.Dato,"court",r.Type||"Retsmøde",[r.Ret,r.Sal?"sal "+r.Sal:"",r.Noter].filter(Boolean).join(" · "),r.Starttid));
+  rows("log",c.SagsID).forEach(l => add(l.Dato,"log",l.Type||"Log",l.Tekst));
+  rows("dokumenter",c.SagsID).forEach(d => add(d.Dato,"doc",d.Titel||d.Filnavn||d.Type||"Dokument",[d.Type,d.Status].filter(Boolean).join(" · ")));
+  rows("artikler",c.SagsID).forEach(a => add(a.Publiceringsdato,"article",a.Titel||"Artikel",a.Medie));
+  return ev.sort((a,b) => a.date.localeCompare(b.date) || String(a.time ?? "").localeCompare(String(b.time ?? "")));
+}
+
+/* Kommende retsmøder, frister og opfølgninger på tværs af sager */
+function agendaItems(horizon){
+  const out = [];
+  activeCases().filter(c => !isClosed(c)).forEach(c => {
+    const push = (date,kind,title,meta,time,isMeeting) => { const d = daysUntil(date); if(d === null) return; out.push({date:String(date).slice(0,10),days:d,kind,title,meta,time,isMeeting,SagsID:c.SagsID,case:c}); };
+    const meetings = rows("retsmoeder",c.SagsID);
+    const meetingDates = new Set(meetings.map(r => String(r.Dato ?? "").slice(0,10)));
+    meetings.forEach(r => { const d = daysUntil(r.Dato); if(d !== null && d >= 0 && d <= horizon) push(r.Dato,"court",r.Type||"Retsmøde",[r.Ret,r.Sal?"sal "+r.Sal:"",r.Dommer?"dommer "+r.Dommer:""].filter(Boolean).join(" · "),r.Starttid,true); });
+    [["DomDato","Domsafsigelse"],["Grundlovsforhoer","Grundlovsforhør"]].forEach(([f,l]) => {
+      const d = daysUntil(c[f]);
+      if(d !== null && d >= 0 && d <= horizon && !meetingDates.has(String(c[f]).slice(0,10))) push(c[f],"court",l,c.Ret||"","",true);
+    });
+    caseDeadlines(c,true).forEach(x => { if(x.days <= horizon) push(x.date, x.field==="Paamindelse" ? "follow" : "deadline", x.label, "", "", false); });
+  });
+  return out.sort((a,b) => a.date.localeCompare(b.date) || String(a.time ?? "").localeCompare(String(b.time ?? "")));
+}
+function lastActivity(c){
+  const ds = [...rows("log",c.SagsID).map(l => l.Dato), ...rows("faseforloeb",c.SagsID).map(f => f.Dato), c.Oprettet]
+    .map(x => String(x ?? "").slice(0,10)).filter(x => parseDate(x)).sort();
+  return ds[ds.length-1] || "";
+}
+function gaps(c){
+  if(isClosed(c) || c.Slettet === "Ja") return [];
+  const g = [], tr = trackOf(c);
+  if(["police","court","decided"].includes(tr) && !c.PolitietsJournalnummer && !rows("journalnumre",c.SagsID).length) g.push("Mangler politiets journalnummer");
+  if(["Tiltalt","Berammet","Hovedforhandling"].includes(c.Fase) && !nextCourt(c)) g.push("Intet kommende retsmøde registreret");
+  if(["Ja","Surrogat"].includes(c.Varetaegt) && !c.Faengslingsfrist) g.push("Varetægt uden fængslingsfrist");
+  if(c.Fase === "Afgjort" && !c.Ankefrist) g.push("Ankefrist ikke registreret");
+  if(c.Sendt && !c.Frist && c.Sagstype === "Aktindsigt") g.push("Aktindsigt sendt uden frist");
+  if(["incident","police"].includes(tr)){ const la = daysUntil(lastActivity(c)); if(la !== null && la < -30) g.push(`Intet nyt i ${-la} dage`); }
+  return g;
+}
+
+/* ---------- Filer: IndexedDB-håndtag ---------- */
+function idbOpen(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("112overblik_db", 1);
+    req.onupgradeneeded = () => req.result.createObjectStore("handles");
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSet(key, value){ const dbi = await idbOpen(); return new Promise((res, rej) => { const tx = dbi.transaction("handles","readwrite"); tx.objectStore("handles").put(value, key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+async function idbGet(key){ const dbi = await idbOpen(); return new Promise((res, rej) => { const tx = dbi.transaction("handles","readonly"); const r = tx.objectStore("handles").get(key); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbDelete(key){ const dbi = await idbOpen(); return new Promise((res, rej) => { const tx = dbi.transaction("handles","readwrite"); tx.objectStore("handles").delete(key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+async function verifyFilePermission(handle, readWrite=false){
+  if(!handle || !handle.queryPermission) return false;
+  const opts = {mode: readWrite ? "readwrite" : "read"};
+  if(await handle.queryPermission(opts) === "granted") return true;
+  if(await handle.requestPermission(opts) === "granted") return true;
+  return false;
+}
+function confirmDiscard(){ return !dirty || confirm("Du har ændringer, der ikke er gemt i Excel. Vil du åbne en anden fil og kassere dem?"); }
+
+async function reopenRecentWorkbook(){
+  if(!window.showOpenFilePicker){ alert("Din browser understøtter ikke genåbning af seneste fil. Brug “Åbn Excel-fil”."); return; }
+  if(!confirmDiscard()) return;
+  try{
+    const handle = await idbGet("recentWorkbookHandle");
+    if(!handle){ alert("Der er ikke gemt adgang til en tidligere Excel-fil endnu. Åbn filen én gang først."); return; }
+    if(!await verifyFilePermission(handle, true)){ alert("Browseren gav ikke adgang til filen. Vælg den igen med “Åbn Excel-fil”."); return; }
+    fileHandle = handle;
+    const f = await handle.getFile();
+    fileName = f.name; recentFileName = f.name; localStorage.setItem("112overblik_recentFileName", f.name);
+    await readWorkbook(await f.arrayBuffer());
+    $("saveBtn").disabled = false;
+    $("fileStatus").innerHTML = `Genåbnet: <strong>${esc(f.name)}</strong>`;
+  }catch(e){ alert("Kunne ikke genåbne den seneste Excel-fil. Vælg den igen med “Åbn Excel-fil”."); }
+}
+async function forgetRecentWorkbook(){
+  try{ await idbDelete("recentWorkbookHandle"); }catch(e){}
+  localStorage.removeItem("112overblik_recentFileName");
+  recentFileName = "";
+  $("fileStatus").innerHTML = "Glemt seneste Excel-fil. Vælg database med “Åbn Excel-fil”.";
+  resetExcelWarning();
+}
+async function openWorkbook(){
+  if(!confirmDiscard()) return;
+  if(!window.showOpenFilePicker){ $("fileInput").click(); return; }
+  try{
+    [fileHandle] = await window.showOpenFilePicker({types:[{description:"Excel",accept:{"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":[".xlsx"]}}],multiple:false});
+    const f = await fileHandle.getFile();
+    fileName = f.name; recentFileName = f.name; localStorage.setItem("112overblik_recentFileName", f.name);
+    try{ await idbSet("recentWorkbookHandle", fileHandle); }catch(e){}
+    await readWorkbook(await f.arrayBuffer());
+    $("saveBtn").disabled = false;
+    $("fileStatus").innerHTML = `Åbnet: <strong>${esc(f.name)}</strong>`;
+  }catch(e){ if(e.name !== "AbortError") alert(e.message); }
+}
+async function importWorkbook(e){
+  const f = e.target.files[0]; if(!f) return;
+  fileHandle = null; fileName = f.name; recentFileName = f.name; localStorage.setItem("112overblik_recentFileName", f.name);
+  await readWorkbook(await f.arrayBuffer());
+  e.target.value = "";
+  $("saveBtn").disabled = false;
+  $("fileStatus").innerHTML = `Indlæst: <strong>${esc(f.name)}</strong><br><span class="notice">Din browser kan ikke gemme direkte – “Gem til Excel” downloader en opdateret fil.</span>`;
+}
+/* Excel-celler formateret som dato/tid bliver til ÅÅÅÅ-MM-DD / TT:MM */
+function normVal(v){
+  if(v instanceof Date && !isNaN(v)){
+    if(v.getFullYear() < 1901) return `${pad(v.getHours())}:${pad(v.getMinutes())}`;
+    return ymd(new Date(v.getTime() + (v.getHours() >= 23 ? 3600000 : 0)));
+  }
+  return v;
+}
+async function readWorkbook(buf){
+  const wb = XLSX.read(buf, {type:"array", cellDates:true});
+  const get = n => XLSX.utils.sheet_to_json(wb.Sheets[n] || XLSX.utils.aoa_to_sheet([]), {defval:""})
+                     .map(r => Object.fromEntries(Object.entries(r).map(([k,v]) => [k, normVal(v)])));
+  db = Object.fromEntries(Object.entries(SHEETS).map(([k,n]) => [k, get(n)]));
+  db.sager = db.sager.filter(s => s.SagsID).map(s => ({...s, Slettet: s.Slettet || "Nej", SlettetDato: s.SlettetDato || ""}));
+  currentId = db.sager.find(s => s.Slettet !== "Ja")?.SagsID || db.sager[0]?.SagsID || "";
+  workbookLoaded = true;
+  excelWarningDismissed = false;
+  localStorage.removeItem("112overblik_excelWarningDismissed");
+  selected.clear();
+  setDirty(false); updateExcelWarning(); render(); renderDetail();
+}
+function buildWorkbook(){
+  const wb = XLSX.utils.book_new();
+  const sheets = {...Object.fromEntries(Object.entries(SHEETS).map(([k,n]) => [n, db[k]])), Dashboard:dashboardRows(), Lister:listRows()};
+  for(const [name,data] of Object.entries(sheets)){
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.length ? data : [{}]), name);
+  }
+  return wb;
+}
+function dashboardRows(){
+  const act = activeCases();
+  return [
+    {Nøgle:"Opdateret", Værdi:new Date().toLocaleString("da-DK")},
+    {Nøgle:"Sager (ikke slettet)", Værdi:act.length},
+    {Nøgle:"Åbne", Værdi:act.filter(c => !isClosed(c)).length},
+    {Nøgle:"Hos politiet", Værdi:act.filter(c => inView(c,"police")).length},
+    {Nøgle:"I retten", Værdi:act.filter(c => inView(c,"court")).length},
+    {Nøgle:"Varetægtsfængslede", Værdi:act.filter(c => !isClosed(c) && ["Ja","Surrogat"].includes(c.Varetaegt)).length},
+    {Nøgle:"Overskredne frister", Værdi:act.filter(c => caseDeadlines(c).some(d => d.days < 0)).length},
+    {Nøgle:"Retsmøder næste 30 dage", Værdi:agendaItems(30).filter(e => e.isMeeting).length},
+    {Nøgle:"Papirkurv", Værdi:db.sager.filter(s => s.Slettet === "Ja").length},
+    {Nøgle:"Artikler", Værdi:db.artikler.length},
+    {Nøgle:"Dokumenter", Værdi:db.dokumenter.length},
+    {Nøgle:"Retsmøder i alt", Værdi:db.retsmoeder.length}
+  ];
+}
+function listRows(){ const n = Math.max(...Object.values(lists).map(l => l.length)); return Array.from({length:n}, (_,i) => ({Sagstyper:lists.types[i]||"", Faser:lists.stages[i]||"", Status:lists.statuses[i]||"", Roller:lists.roles[i]||""})); }
+async function saveWorkbook(){
+  if(!workbookLoaded){
+    alert("Der er ikke indlæst en Excel-fil. Åbn den fælles Excel-database først, eller brug “Download kopi”.");
+    resetExcelWarning();
+    return;
+  }
+  const out = XLSX.write(buildWorkbook(), {bookType:"xlsx", type:"array"});
+  if(fileHandle){
+    try{
+      const w = await fileHandle.createWritable(); await w.write(out); await w.close();
+      setDirty(false); $("fileStatus").innerHTML = `Gemt til <strong>${esc(fileName)}</strong> kl. ${new Date().toLocaleTimeString("da-DK",{hour:"2-digit",minute:"2-digit"})}`;
+      flash("Gemt i Excel"); return;
+    }catch(e){ alert("Gem direkte fejlede (er filen åben i Excel?). Downloader en kopi i stedet."); }
+  }
+  downloadBlob(new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), (fileName || "112_overblik_database.xlsx").replace(/\.xlsx$/i,"") + "_opdateret.xlsx");
+  setDirty(false);
+}
+function downloadWorkbook(){
+  downloadBlob(new Blob([XLSX.write(buildWorkbook(),{bookType:"xlsx",type:"array"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),
+    (fileName || "112_overblik_database.xlsx").replace(/\.xlsx$/i,"") + "_kopi.xlsx");
+}
+function downloadBlob(blob,name){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+
+/* Kalender-eksport til Outlook/Google (.ics) */
+function downloadIcs(){
+  const items = agendaItems(365).filter(e => e.days >= 0);
+  if(!items.length){ alert("Der er ingen kommende retsmøder eller frister at eksportere."); return; }
+  const stamp = new Date().toISOString().replace(/[-:]/g,"").slice(0,15) + "Z";
+  const escI = s => String(s ?? "").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+  const slug = s => String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g,"-").slice(0,30);
+  const L = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//112-overblik//DA","CALSCALE:GREGORIAN","X-WR-CALNAME:112-overblik"];
+  items.forEach(e => {
+    const d = e.date.replace(/-/g,"");
+    L.push("BEGIN:VEVENT", `UID:${slug(e.SagsID)}-${d}-${e.kind}-${slug(e.title)}@112-overblik`, `DTSTAMP:${stamp}`);
+    const tm = String(e.time ?? "").match(/^(\d{1,2}):(\d{2})/);
+    if(tm){ L.push(`DTSTART:${d}T${pad(tm[1])}${tm[2]}00`, "DURATION:PT2H"); }
+    else { L.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDays(e.date,1).replace(/-/g,"")}`); }
+    L.push(`SUMMARY:${escI(e.title+" – "+(e.case.Titel||""))}`);
+    const desc = [e.meta, e.case.PolitietsJournalnummer ? "Politiets j.nr. "+e.case.PolitietsJournalnummer : "", e.case.RettensSagsnummer ? "Rettens sagsnr. "+e.case.RettensSagsnummer : ""].filter(Boolean).join("\n");
+    if(desc) L.push(`DESCRIPTION:${escI(desc)}`);
+    if(e.meta && e.kind === "court") L.push(`LOCATION:${escI(e.meta)}`);
+    L.push("END:VEVENT");
+  });
+  L.push("END:VCALENDAR");
+  downloadBlob(new Blob([L.join("\r\n")],{type:"text/calendar"}), "112-overblik-kalender.ics");
+  flash(`${items.length} begivenheder eksporteret`);
+}
+
+/* ---------- Sager ---------- */
+function newCase(){
+  if(!workbookLoaded && !confirm("Der er ikke indlæst en Excel-fil. Sagen gemmes ikke i den fælles database, før du åbner og gemmer til Excel. Fortsæt?")){ resetExcelWarning(); return; }
+  const now = nowIso(), d = today();
+  const c = {SagsID:uid("SAG"), Titel:"Ny 112-sag", Sagstype:"112-hændelse", Fase:"Tip / hændelse", Status:"Aktiv", Prioritet:"Mellem", Haendelsesdato:d, Slettet:"Nej", SlettetDato:"", Oprettet:now, Opdateret:now};
+  db.sager.unshift(c);
+  db.faseforloeb.push({FaseID:uid("FASE"), SagsID:c.SagsID, Fase:"Tip / hændelse", Dato:d, Note:"Sag oprettet", Oprettet:now});
+  currentId = c.SagsID; openSections.add("haendelse"); saveOpenSections();
+  setDirty(true); toggleDetail(true); render(); renderDetail();
+  const t = $("d_Titel"); if(t){ t.focus(); t.select(); }
+}
+function openCase(id){ currentId = id; toggleDetail(true); render(); renderDetail(); }
+function duplicateCase(){
+  const src = current(); if(!src) return;
+  const now = nowIso();
+  const c = {...src, SagsID:uid("SAG"), Titel:(src.Titel||"Sag")+" – kopi", Slettet:"Nej", SlettetDato:"", Oprettet:now, Opdateret:now};
+  db.sager.unshift(c); currentId = c.SagsID; setDirty(true); render(); renderDetail(); flash("Sagen er kopieret (uden underliggende rækker)");
+}
+function syncPhase(id){
+  const c = caseById(id); if(!c) return;
+  const r = rows("faseforloeb",id).filter(x => x.Fase && parseDate(x.Dato));
+  if(!r.length) return;
+  r.sort((a,b) => String(a.Dato).localeCompare(String(b.Dato)) || lists.stages.indexOf(a.Fase) - lists.stages.indexOf(b.Fase));
+  c.Fase = r[r.length-1].Fase;
+}
+function setPhase(id, fase, dato=today(), note=""){
+  const c = caseById(id); if(!c || !fase) return;
+  db.faseforloeb.push({FaseID:uid("FASE"), SagsID:id, Fase:fase, Dato:dato, Note:note, Oprettet:nowIso()});
+  syncPhase(id);
+  c.Opdateret = nowIso();
+  setDirty(true); render(); renderDetail();
+  flash(`Fase: ${fase} (${fmtDate(dato)})`);
+}
+function askDate(msg, def=today()){
+  const v = prompt(msg + "\n\nDato (ÅÅÅÅ-MM-DD eller DD-MM-ÅÅÅÅ):", def);
+  if(v === null) return null;
+  const s = v.trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  m = s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})$/);
+  if(m) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+  alert("Datoen blev ikke genkendt. Skriv fx " + today());
+  return null;
+}
+function pickPhase(fase){
+  const c = current(); if(!c) return;
+  const d = askDate(`Sæt fasen til “${fase}”.\nHvornår skete det?`); if(!d) return;
+  setPhase(c.SagsID, fase, d, "");
+}
+function advancePhase(id){
+  const c = caseById(id); if(!c) return;
+  const i = lists.stages.indexOf(c.Fase);
+  const next = lists.stages[Math.min(i+1, lists.stages.length-1)];
+  if(next === c.Fase) return;
+  const d = askDate(`Ryk “${c.Titel||"sagen"}” videre til “${next}”.\nHvornår skete det?`); if(!d) return;
+  setPhase(id, next, d, "");
+}
+function addPhaseFromForm(){
+  const f = $("ph_f").value, d = $("ph_d").value;
+  if(!d){ alert("Vælg en dato for faseskiftet."); return; }
+  setPhase(currentId, f, d, $("ph_n").value);
+}
+function deleteSelected(){
+  const ids = [...selected].filter(id => visibleIds.includes(id));
+  if(!ids.length){ alert("Marker mindst én sag."); return; }
+  const n = `${ids.length} markerede sag${ids.length===1?"":"er"}`;
+  if(currentView === "trash"){
+    if(!confirm(`Er du sikker på, at du vil slette ${n} permanent?`)) return;
+    if(prompt("Denne handling kan ikke fortrydes.\n\nSkriv SLET med store bogstaver for at bekræfte permanent sletning.") !== "SLET"){ alert("Sletning blev annulleret."); return; }
+    const set = new Set(ids);
+    Object.keys(db).forEach(k => db[k] = db[k].filter(r => !set.has(r.SagsID)));
+    if(set.has(currentId)) currentId = db.sager.find(s => s.Slettet !== "Ja")?.SagsID || "";
+  } else {
+    if(!confirm(`Er du sikker på, at du vil flytte ${n} til papirkurven?`)) return;
+    if(prompt("Skriv SLET med store bogstaver for at bekræfte.") !== "SLET"){ alert("Handlingen blev annulleret."); return; }
+    const now = nowIso(), set = new Set(ids);
+    db.sager = db.sager.map(s => set.has(s.SagsID) ? {...s, Slettet:"Ja", SlettetDato:now, Opdateret:now} : s);
+    if(set.has(currentId)) currentId = db.sager.find(s => s.Slettet !== "Ja")?.SagsID || "";
+  }
+  selected.clear(); setDirty(true); render(); renderDetail();
+}
+function restoreSelected(){
+  const ids = [...selected];
+  if(!ids.length){ alert("Marker mindst én sag i papirkurven."); return; }
+  const now = nowIso(), set = new Set(ids);
+  db.sager = db.sager.map(s => set.has(s.SagsID) ? {...s, Slettet:"Nej", SlettetDato:"", Opdateret:now} : s);
+  selected.clear(); setDirty(true); render(); renderDetail();
+}
+function toggleSel(id, on){ on ? selected.add(id) : selected.delete(id); $("selectedText").textContent = `${selected.size} markerede`; }
+function removeRow(sheet,key,id){
+  if(!confirm("Fjern denne række fra sagen?")) return;
+  db[sheet] = db[sheet].filter(r => r[key] !== id);
+  if(sheet === "faseforloeb") syncPhase(currentId);
+  touch(); setDirty(true); renderDetail(); render();
+}
+function addRow(sheet,row){ db[sheet].push(row); touch(); setDirty(true); renderDetail(); render(); }
+function touch(){ const c = current(); if(c) c.Opdateret = nowIso(); }
+function setField(field, value){ const c = current(); if(!c) return; c[field] = value; touch(); setDirty(true); renderDetail(); render(); }
+function calcFrist(){
+  const c = current(); if(!c) return;
+  if(!c.Sendt && !confirm("Der er ingen afsendelsesdato. Beregn 7 arbejdsdage fra i dag?")) return;
+  setField("Frist", addWorkdays(c.Sendt || today(), 7));
+}
+function calcAnkefrist(){
+  const c = current(); if(!c) return;
+  if(!c.DomDato){ alert("Udfyld datoen for dommen først."); return; }
+  setField("Ankefrist", nextWorkday(addDays(c.DomDato, 14)));
+}
+function markFollowedUp(){
+  const c = current(); if(!c) return;
+  const note = prompt("Har fulgt op i dag.\n\nKort note (valgfri), fx “Vagtchef: intet nyt”:", "");
+  if(note === null) return;
+  db.log.push({LogID:uid("LOG"), SagsID:c.SagsID, Dato:today(), Type:"Opfølgning", Tekst:note.trim(), Oprettet:nowIso()});
+  const next = addDays(today(), 14);
+  if(!c.Paamindelse || String(c.Paamindelse) < next) c.Paamindelse = next;
+  touch(); setDirty(true); render(); renderDetail();
+  flash(`Fulgt op · næste opfølgning ${fmtDate(c.Paamindelse)}`);
+}
+function setFollowup(n){ setField("Paamindelse", addDays(today(), n)); flash(`Opfølgning sat til ${fmtDate(addDays(today(), n))}`); }
+function suspectsToPeople(){
+  const c = current(); if(!c) return;
+  const existing = new Set(rows("personer").map(p => String(p.Navn ?? "").trim().toLowerCase()));
+  const names = String(c.MistaenkteNavne ?? "").split(/\n+/).map(x => x.trim()).filter(Boolean).filter(n => !existing.has(n.toLowerCase()));
+  if(!names.length){ alert("Ingen nye navne at oprette (skriv ét navn pr. linje)."); return; }
+  names.forEach(n => db.personer.push({PersonID:uid("PERS"), SagsID:currentId, Navn:n, Rolle:"Mistænkt", Oprettet:nowIso()}));
+  touch(); setDirty(true); renderDetail(); render(); flash(`${names.length} person${names.length===1?"":"er"} oprettet`);
+}
+
+/* ---------- Visninger ---------- */
+function inView(c, view){
+  const t = trackOf(c);
+  switch(view){
+    case "open":     return !isClosed(c);
+    case "deadline": return caseDeadlines(c).some(d => d.days <= 7);
+    case "followup": { const d = daysUntil(c.Paamindelse); return !isClosed(c) && d !== null && d <= 0; }
+    case "police":   return t === "police" || (t === "incident" && ["112-hændelse","Politisag"].includes(c.Sagstype));
+    case "court":    return ["court","decided"].includes(t) || (c.Sagstype === "Retssag" && t !== "closed");
+    case "access":   return c.Sagstype === "Aktindsigt";
+    case "closed":   return isClosed(c);
+    default:         return true;
+  }
+}
+const viewTitles = {dashboard:"Søgeresultater",calendar:"Søgeresultater",all:"Alle sager",open:"Åbne sager",deadline:"Frister inden for 7 dage – inkl. overskredne",followup:"Opfølgning i dag eller overskredet",police:"Hændelser og sager hos politiet",court:"Sager hos anklagemyndigheden og i retten",access:"Aktindsigter",closed:"Afsluttede sager",trash:"Papirkurv"};
+function setView(v){
+  currentView = v; selected.clear();
+  document.querySelectorAll(".nav button").forEach(x => x.classList.toggle("active", x.dataset.view === v));
+  render();
+}
+function filteredCases(){
+  const q = $("search").value.trim().toLowerCase();
+  const data = db.sager.filter(c => {
+    if(currentView === "trash" ? c.Slettet !== "Ja" : c.Slettet === "Ja") return false;
+    if(!inView(c, currentView)) return false;
+    if(q){
+      const blob = [...Object.values(c), ...["journalnumre","forhold","artikler","dokumenter","personer","retsmoeder","log","faseforloeb"].flatMap(s => rows(s,c.SagsID).flatMap(Object.values))].join(" ").toLowerCase();
+      if(!blob.includes(q)) return false;
+    }
+    return true;
+  });
+  const sort = $("sortBy").value;
+  const dl = c => caseDeadlines(c)[0]?.date || "9999";
+  const ct = c => nextCourt(c)?.Dato || "9999";
+  data.sort((a,b) =>
+    sort === "deadline" ? dl(a).localeCompare(dl(b)) :
+    sort === "court"    ? String(ct(a)).localeCompare(String(ct(b))) :
+    sort === "incident" ? String(b.Haendelsesdato ?? "").localeCompare(String(a.Haendelsesdato ?? "")) :
+    sort === "stage"    ? lists.stages.indexOf(a.Fase) - lists.stages.indexOf(b.Fase) :
+    sort === "title"    ? String(a.Titel ?? "").localeCompare(String(b.Titel ?? ""), "da") :
+                          String(b.Opdateret ?? "").localeCompare(String(a.Opdateret ?? "")));
+  return data;
+}
+function render(){
+  renderNav(); renderKpis();
+  const q = $("search").value.trim();
+  const overview = ["dashboard","calendar"].includes(currentView) && !q;
+  $("overview").style.display = overview ? "" : "none";
+  $("listWrap").style.display = overview ? "none" : "";
+  $("downloadBtn").disabled = !(workbookLoaded || db.sager.length);
+  if(overview){
+    $("overview").innerHTML = currentView === "dashboard" ? dashboardHtml() : calendarHtml();
+    visibleIds = [];
+    return;
+  }
+  const data = filteredCases(); visibleIds = data.map(c => c.SagsID);
+  $("viewTitle").textContent = (q ? `Søgning: “${q}” · ` : "") + (q && ["dashboard","calendar"].includes(currentView) ? "alle sager" : viewTitles[currentView]) + ` (${data.length})`;
+  $("selectedText").textContent = `${selected.size} markerede`;
+  $("deleteSelectedBtn").textContent = currentView === "trash" ? "Slet permanent" : "Flyt til papirkurv";
+  $("restoreSelectedBtn").style.display = currentView === "trash" ? "inline-block" : "none";
+  $("caseList").innerHTML = data.length ? data.map(card).join("") : '<div class="empty">Ingen sager matcher.</div>';
+}
+function renderNav(){
+  const act = activeCases();
+  const cnt = v => act.filter(c => inView(c, v)).length;
+  $("navAll").textContent = act.length; $("navList").textContent = act.length;
+  $("navCal").textContent = agendaItems(14).filter(e => e.days >= 0).length;
+  const fu = cnt("followup"); $("navFollow").textContent = fu; $("navFollow").classList.toggle("alert", fu > 0);
+  $("navOpen").textContent = cnt("open");
+  const late = act.filter(c => caseDeadlines(c).some(d => d.days < 0)).length;
+  $("navLate").textContent = cnt("deadline"); $("navLate").classList.toggle("alert", late > 0);
+  $("navPolice").textContent = cnt("police"); $("navCourt").textContent = cnt("court");
+  $("navAccess").textContent = cnt("access"); $("navClosed").textContent = cnt("closed");
+  $("navTrash").textContent = db.sager.filter(s => s.Slettet === "Ja").length;
+}
+function renderKpis(){
+  const act = activeCases();
+  const late = act.filter(c => caseDeadlines(c).some(d => d.days < 0)).length;
+  const soon = act.filter(c => caseDeadlines(c).some(d => d.days >= 0 && d.days <= 7)).length;
+  const meetings = agendaItems(14).filter(e => e.isMeeting).length;
+  $("kpis").innerHTML = [
+    ["Åbne sager", act.filter(c => !isClosed(c)).length, "open"],
+    ["Hos politiet", act.filter(c => !isClosed(c) && inView(c,"police")).length, "police"],
+    ["I retten", act.filter(c => !isClosed(c) && inView(c,"court")).length, "court"],
+    ["Retsmøder 14 dage", meetings, "calendar"],
+    ["Frist ≤ 7 dage", soon, "deadline"],
+    ["Overskredet", late, "deadline", late > 0]
+  ].map(([a,b,v,alert]) => `<div class="kpi ${alert?"alert":""}" onclick="setView('${v}')"><strong>${b}</strong><span>${a}</span></div>`).join("");
+}
+function card(c){
+  const checked = selected.has(c.SagsID) ? "checked" : "";
+  const parts = [["personer","person","personer"],["retsmoeder","retsmøde","retsmøder"],["dokumenter","dokument","dokumenter"],["artikler","artikel","artikler"]]
+    .map(([k,one,many]) => { const n = rows(k,c.SagsID).length; return n ? `${n} ${n===1?one:many}` : ""; }).filter(Boolean).join(" · ");
+  const si = lists.stages.indexOf(c.Fase);
+  const nr = nextCourt(c);
+  const deleted = c.Slettet === "Ja";
+  const dls = caseDeadlines(c).slice(0,2).map(dlBadge).join("");
+  const meta = [c.Sagstype, c.Sted, c.Haendelsesdato ? fmtDate(c.Haendelsesdato) + (c.Gerningstid ? " kl. " + c.Gerningstid : "") : "", c.PolitietsJournalnummer ? "J.nr. " + c.PolitietsJournalnummer : "", c.RettensSagsnummer ? "Ret: " + c.RettensSagsnummer : ""].filter(Boolean).map(esc).join(" · ");
+  return `<article class="casecard tr-${trackOf(c)} ${c.SagsID===currentId?"active":""}">
+    <div class="casehead">
+      <input type="checkbox" ${checked} onchange="toggleSel(${jq(c.SagsID)},this.checked)">
+      <div class="cbody"><div class="title" onclick="openCase(${jq(c.SagsID)})">${esc(c.Titel||"Uden titel")}</div><div class="meta">${meta}${parts?`<br>${parts}`:""}</div></div>
+      <span class="cstatus">${deleted ? "Papirkurv" : esc(c.Status||"")}${c.Prioritet==="Høj"?' · <span style="color:var(--red)">Høj</span>':""}</span>
+    </div>
+    <div class="phase"><div class="progress">${lists.stages.map((s,i) => `<i class="${i<=si?"done":""}" title="${esc(s)}"></i>`).join("")}</div><span>${esc(c.Fase||"Ukendt fase")}</span></div>
+    <div class="cfoot">
+      <div class="badges">${isClosed(c) ? '<span class="badge green">Afsluttet</span>' : dls}${nr?`<span class="badge violet">${esc(nr.Type||"Retsmøde")} ${esc(fmtDate(nr.Dato))}${nr.Starttid?" kl. "+esc(nr.Starttid):""}</span>`:""}${["Ja","Surrogat"].includes(c.Varetaegt)&&!isClosed(c)?`<span class="badge red">Varetægt</span>`:""}${followBadge(c)}</div>
+      <div class="actions">${!deleted && c.Fase !== "Afsluttet" ? `<button class="ghost small" onclick="advancePhase(${jq(c.SagsID)})">Næste fase →</button>` : ""}<button class="small" onclick="openCase(${jq(c.SagsID)})">Åbn</button></div>
+    </div>
+  </article>`;
+}
+function mini(c){
+  const dl = caseDeadlines(c)[0], nr = nextCourt(c);
+  return `<div class="mini tr-${trackOf(c)} ${c.SagsID===currentId?"active":""}" onclick="openCase(${jq(c.SagsID)})">
+    <div class="t">${esc(c.Titel||"Uden titel")}</div>
+    <div class="meta">${[c.Fase,c.Sted].filter(Boolean).map(esc).join(" · ")}</div>
+    ${(dl||nr||c.Varetaegt==="Ja"||followBadge(c)) ? `<div class="badges">${dl?dlBadge(dl):""}${nr?`<span class="badge violet">Ret ${esc(fmtDate(nr.Dato))}</span>`:""}${["Ja","Surrogat"].includes(c.Varetaegt)&&!isClosed(c)?'<span class="badge red">Varetægt</span>':""}${followBadge(c)}</div>` : ""}
+    ${!isClosed(c) ? `<button class="ghost small adv" onclick="event.stopPropagation();advancePhase(${jq(c.SagsID)})">Næste fase →</button>` : ""}
+  </div>`;
+}
+function relDay(date){ const d = daysUntil(date); return d === 0 ? "I dag" : d === 1 ? "I morgen" : cap(fmtDate(date)); }
+function agendaHtml(items){
+  if(!items.length) return '<div class="empty">Intet i perioden.</div>';
+  let html = "", last = "";
+  items.forEach(e => {
+    const grp = e.days < 0 ? "Overskredet" : relDay(e.date);
+    if(grp !== last){ html += `<div class="aghead ${e.days<0?"late":""}">${esc(grp)}</div>`; last = grp; }
+    const badge = e.days < 0 ? `<span class="badge red">${-e.days} d. over</span>` : e.time ? `<span class="badge">kl. ${esc(e.time)}</span>` : "";
+    const meta = [e.meta, e.days<0?fmtDate(e.date):""].filter(Boolean).join(" · ");
+    html += `<div class="agrow ${e.days<0?"late":""}" onclick="openCase(${jq(e.SagsID)})">${tag(e.kind)}<div><span class="agt">${esc(e.title)}</span> <span class="agc">· ${esc(e.case.Titel||"Uden titel")}</span>${meta?`<div class="meta">${esc(meta)}</div>`:""}</div>${badge}</div>`;
+  });
+  return html;
+}
+function gapsHtml(){
+  const gl = activeCases().map(c => ({c, g:gaps(c)})).filter(x => x.g.length)
+    .sort((a,b) => (a.c.Prioritet==="Høj"?0:1) - (b.c.Prioritet==="Høj"?0:1) || b.g.length - a.g.length);
+  if(!gl.length) return '<div class="empty">Ingen huller fundet.</div>';
+  return gl.slice(0,15).map(({c,g}) => `<div class="gap" onclick="openCase(${jq(c.SagsID)})"><div><strong>${esc(c.Titel||"Uden titel")}</strong><div class="meta">${g.map(esc).join(" · ")}</div></div><span class="badge">${esc(c.Fase||"")}</span></div>`).join("")
+    + (gl.length > 15 ? `<div class="notice" style="margin-top:8px">+ ${gl.length-15} sager mere</div>` : "");
+}
+function boardHtml(){
+  const act = activeCases();
+  const urg = c => caseDeadlines(c)[0]?.days ?? 9999;
+  return `<div class="board">${tracks.map(t => {
+    const all = act.filter(c => trackOf(c) === t.key);
+    const cs = t.key === "closed"
+      ? all.slice().sort((a,b) => String(b.Opdateret ?? "").localeCompare(String(a.Opdateret ?? ""))).slice(0,6)
+      : all.slice().sort((a,b) => urg(a) - urg(b) || String(b.Opdateret ?? "").localeCompare(String(a.Opdateret ?? "")));
+    return `<div class="col tr-${t.key}"><h3><i class="dot"></i>${esc(t.label)}<span class="n">${all.length}</span></h3>${cs.map(mini).join("") || '<div class="notice" style="margin:0 6px">Ingen sager</div>'}${t.key==="closed" && all.length > cs.length ? `<button class="ghost small colmore" onclick="setView('closed')">Se alle ${all.length} →</button>` : ""}</div>`;
+  }).join("")}</div>`;
+}
+function dashboardHtml(){
+  if(!db.sager.length) return `<div class="panel"><h2>Kom i gang</h2><div class="sub">Åbn din Excel-database i menuen til venstre, eller opret en ny 112-sag. Den nye sag starter i fasen “Tip / hændelse” og kan rykkes videre, efterhånden som den går fra politiet til retten.</div><button class="primary" onclick="newCase()">+ Ny 112-sag</button></div>`;
+  return `<div class="split">
+    <div class="panel"><h2>Næste 14 dage</h2><div class="sub">Retsmøder, frister og opfølgninger – inkl. overskredne</div>${agendaHtml(agendaItems(14))}</div>
+    <div class="panel"><h2>Følg op</h2><div class="sub">Huller i sagerne, som typisk kræver et opkald eller en mail</div>${gapsHtml()}</div>
+  </div>
+  <div class="panel"><h2>Forløb</h2><div class="sub">Fra hændelse over politiet til retten. Klik på en sag for at åbne den, eller ryk den til næste fase.</div>${boardHtml()}</div>`;
+}
+function calendarHtml(){
+  const vt = activeCases().filter(c => !isClosed(c) && ["Ja","Surrogat"].includes(c.Varetaegt))
+    .sort((a,b) => String(a.Faengslingsfrist || "9999").localeCompare(String(b.Faengslingsfrist || "9999")));
+  return `<div class="split">
+    <div class="panel"><div class="panelhead"><div><h2>Kalender – næste 90 dage</h2><div class="sub">Retsmøder, domsafsigelser, frister og opfølgninger</div></div><button class="small" onclick="downloadIcs()">Eksportér til Outlook (.ics)</button></div>${agendaHtml(agendaItems(90))}</div>
+    <div class="panel"><h2>Varetægtsfængslede</h2><div class="sub">Ved fængslingsfristen kommer der typisk et nyt retsmøde om forlængelse</div>${vt.length ? vt.map(c => `<div class="gap" onclick="openCase(${jq(c.SagsID)})"><div><strong>${esc(c.Titel||"Uden titel")}</strong><div class="meta">${esc(c.Varetaegt)}${c.Grundlovsforhoer?" · grundlovsforhør "+esc(fmtDate(c.Grundlovsforhoer)):""}${c.Ret?" · "+esc(c.Ret):""}</div></div>${c.Faengslingsfrist ? dlBadge({label:"Frist", days:daysUntil(c.Faengslingsfrist)}) : '<span class="badge red">Ingen frist</span>'}</div>`).join("") : '<div class="empty">Ingen registrerede varetægtsfængslinger.</div>'}</div>
+  </div>`;
+}
+
+/* ---------- Sagsfane ---------- */
+function toggleDetail(forceOpen=null){
+  detailOpen = forceOpen === null ? !detailOpen : forceOpen;
+  localStorage.setItem("112overblik_detailOpen", detailOpen ? "true" : "false");
+  $("appShell").classList.toggle("detail-closed", !detailOpen);
+  $("toggleDetailBtn").textContent = detailOpen ? "Luk sagsfane" : "Åbn sagsfane";
+}
+function saveOpenSections(){ localStorage.setItem("112overblik_openSections", JSON.stringify([...openSections])); }
+function updateExcelWarning(){
+  const box = $("excelWarning"), txt = $("excelWarningText");
+  if(workbookLoaded || excelWarningDismissed){ box.classList.remove("show"); return; }
+  txt.innerHTML = recentFileName
+    ? `Senest brugte fil: <strong>${esc(recentFileName)}</strong>. Klik “Genåbn seneste fil” eller vælg filen med “Åbn Excel-fil”, så data kan læses og gemmes korrekt.`
+    : `Åbn den fælles Excel-database, før du opretter eller redigerer sager. Ellers arbejder du kun i en tom midlertidig app-session.`;
+  box.classList.add("show");
+}
+function dismissExcelWarning(){ excelWarningDismissed = true; localStorage.setItem("112overblik_excelWarningDismissed","true"); updateExcelWarning(); }
+function resetExcelWarning(){ excelWarningDismissed = false; localStorage.removeItem("112overblik_excelWarningDismissed"); updateExcelWarning(); }
+
+function section(key,title,body,count=null){
+  return `<details data-sec="${key}" ${openSections.has(key)?"open":""}><summary>${esc(title)}${count?`<span class="n">${count}</span>`:""}</summary><div class="sectionbody">${body}</div></details>`;
+}
+function input(id,label,value,type="text",extra=""){ return `<div class="field"><label for="${id}">${label}</label><input id="${id}" type="${type}" value="${esc(value ?? "")}" ${extra}></div>`; }
+function select(id,label,value,opts){
+  const v = value ?? "";
+  const all = v !== "" && !opts.includes(v) ? [v, ...opts] : opts;
+  return `<div class="field"><label for="${id}">${label}</label><select id="${id}">${all.map(o => `<option value="${esc(o)}" ${o===v?"selected":""}>${esc(o) || "—"}</option>`).join("")}</select></div>`;
+}
+function textarea(id,label,value){ return `<div class="field"><label for="${id}">${label}</label><textarea id="${id}">${esc(value ?? "")}</textarea></div>`; }
+function inputCalc(id,label,value,btn,fn){ return `<div class="field"><label for="${id}">${label}</label><div class="inline"><div><input id="${id}" type="date" value="${esc(value ?? "")}"></div><button type="button" class="small" onclick="${fn}">${esc(btn)}</button></div></div>`; }
+
+function factsHtml(c){
+  const nr = nextCourt(c), dl = caseDeadlines(c)[0];
+  const lastFollow = rows("log", c.SagsID).filter(l => parseDate(l.Dato)).sort((a,b) => String(b.Dato).localeCompare(String(a.Dato)))[0];
+  const f = [
+    c.PolitietsJournalnummer && ["Politiets j.nr.", esc(c.PolitietsJournalnummer)],
+    c.RettensSagsnummer && ["Rettens sagsnr.", esc(c.RettensSagsnummer)],
+    nr && ["Næste retsmøde", `${esc(fmtDate(nr.Dato))}${nr.Starttid?" kl. "+esc(nr.Starttid):""}${nr.Ret?"<br>"+esc(nr.Ret):""}`],
+    dl && ["Næste frist", dlBadge(dl)],
+    c.Varetaegt && c.Varetaegt !== "Nej" && ["Varetægt", esc(c.Varetaegt) + (c.Faengslingsfrist ? " til " + esc(fmtDate(c.Faengslingsfrist)) : "")],
+    c.Udfald && ["Udfald", esc(c.Udfald) + (c.Straf ? " · " + esc(c.Straf) : "")],
+    lastFollow && ["Senest fulgt op", esc(fmtDate(lastFollow.Dato)) + (lastFollow.Tekst ? `<br><span class="meta">${esc(trunc(lastFollow.Tekst,80))}</span>` : "")]
+  ].filter(Boolean);
+  return f.length ? `<div class="facts">${f.map(([k,v]) => `<div><span class="k">${k}</span>${v}</div>`).join("")}</div>` : "";
+}
+function renderDetail(){
+  const box = $("detail");
+  const keep = lastDetailId === currentId ? box.scrollTop : 0;
+  const c = current();
+  if(!c){ box.innerHTML = '<div class="empty">Vælg eller opret en sag.</div>'; lastDetailId = ""; return; }
+  const si = lists.stages.indexOf(c.Fase);
+  box.innerHTML = `
+    <div class="case-titlebar tr-${trackOf(c)}">
+      <div class="kicker"><i class="dot"></i>${esc(tracks.find(t => t.key === trackOf(c)).label)} · ${esc(c.Sagstype||"")}${c.Slettet==="Ja"?" · i papirkurven":""}</div>
+      <h1 id="caseTitle">${esc(c.Titel||"Uden titel")}</h1>
+      <div class="stagebar">${lists.stages.map((s,i) => `<button type="button" class="stage ${i===si?"on":i<si?"done":""}" title="Sæt fase: ${esc(s)}" onclick="pickPhase(${jq(s)})">${esc(s)}</button>`).join("")}</div>
+      ${factsHtml(c)}
+      <div class="followbar"><span>Opfølgning</span><input id="d_Paamindelse" type="date" value="${esc(c.Paamindelse ?? "")}"><button class="ghost small" onclick="setFollowup(7)">+1 uge</button><button class="ghost small" onclick="setFollowup(14)">+2 uger</button><button class="ghost small" onclick="setFollowup(30)">+1 md.</button></div>
+      <div class="savebar"><button class="small" onclick="markFollowedUp()" title="Registrér at du har fulgt op (fx ringet til politiet) og ryk næste opfølgning">✓ Fulgt op i dag</button><span id="dirtyState" class="${dirty?"dirty":"saved"}">${dirty?"Ikke gemt":"Gemt"}</span><div class="grow"></div><button class="ghost small" onclick="duplicateCase()">Kopiér</button>${c.Slettet==="Ja" ? '<button class="small" onclick="selected=new Set([currentId]);restoreSelected()">Gendan sag</button>' : ""}<button class="ghost small" onclick="toggleDetail(false)">Luk</button><button class="primary small" onclick="saveWorkbook()">Gem til Excel</button></div>
+    </div>
+    ${section("tidslinje","Tidslinje",`<div id="tlBody">${timelineHtml(c)}</div>`)}
+    ${section("haendelse","Hændelse",formIncident(c))}
+    ${section("politi","Politi",formPolice(c))}
+    ${section("ret","Anklage & ret",formCourtCase(c))}
+    ${section("aktindsigt","Aktindsigt & frister",formAccess(c))}
+    ${section("research","Research & noter",formResearch(c))}
+    ${section("faser","Faseforløb",listPhases()+formPhase(),rows("faseforloeb").length)}
+    ${section("retsmoeder","Retsmøder",listCourt()+formCourt(),rows("retsmoeder").length)}
+    ${section("journal","Journalnumre",listJournals()+formJournal(),rows("journalnumre").length)}
+    ${section("personer","Personer",listPeople()+formPerson(),rows("personer").length)}
+    ${section("forhold","Forhold",listCharges()+formCharge(),rows("forhold").length)}
+    ${section("dokumenter","Dokumenter",listDocuments()+formDocument(),rows("dokumenter").length)}
+    ${section("artikler","Artikler",listArticles()+formArticle(),rows("artikler").length)}
+  `;
+  bindDetailInputs();
+  box.scrollTop = keep; lastDetailId = currentId;
+}
+function bindDetailInputs(){
+  document.querySelectorAll("#detail [id^='d_']").forEach(el => {
+    const field = el.id.slice(2);
+    if(field === "Fase"){
+      el.addEventListener("change", () => setPhase(currentId, el.value, today(), "Ændret i sagsoplysninger"));
+      return;
+    }
+    el.addEventListener("input", () => {
+      const c = current(); if(!c) return;
+      c[field] = el.value; c.Opdateret = nowIso(); setDirty(true);
+      if(field === "Titel") $("caseTitle").textContent = el.value || "Uden titel";
+      render();
+    });
+    el.addEventListener("change", () => { const c = current(); const tl = $("tlBody"); if(c && tl) tl.innerHTML = timelineHtml(c); });
+  });
+  document.querySelectorAll("#detail details").forEach(d => d.addEventListener("toggle", () => { d.open ? openSections.add(d.dataset.sec) : openSections.delete(d.dataset.sec); saveOpenSections(); }));
+}
+function timelineHtml(c){
+  const ev = caseEvents(c);
+  if(!ev.length) return '<div class="empty">Ingen daterede begivenheder endnu. Udfyld datoer, faseskift, retsmøder eller log – så bygges tidslinjen automatisk.</div>';
+  const t = today(); let html = '<div class="timeline">', nowDone = false;
+  ev.forEach(e => {
+    if(!nowDone && e.date > t){ html += `<div class="nowline">I dag · ${esc(fmtDate(t))}</div>`; nowDone = true; }
+    html += `<div class="tl k-${e.kind} ${e.date>t?"future":""}"><div class="d">${esc(fmtDate(e.date))}${e.time?" · kl. "+esc(e.time):""}</div><strong>${esc(e.title)}</strong>${e.meta?`<div class="meta">${esc(trunc(e.meta,180))}</div>`:""}</div>`;
+  });
+  if(!nowDone) html += `<div class="nowline">I dag · ${esc(fmtDate(t))}</div>`;
+  return html + "</div>";
+}
+function formIncident(c){ return `
+  ${input("d_Titel","Titel",c.Titel)}
+  <div class="row">${select("d_Sagstype","Sagstype",c.Sagstype,lists.types)}${select("d_Fase","Fase",c.Fase,lists.stages)}</div>
+  <div class="row">${select("d_Status","Status",c.Status,lists.statuses)}${select("d_Prioritet","Prioritet",c.Prioritet,["Høj","Mellem","Lav"])}</div>
+  <div class="row3">${input("d_Haendelsesdato","Gerningsdato",c.Haendelsesdato,"date")}${input("d_Gerningstid","Klokkeslæt",c.Gerningstid,"time")}${input("d_Sted","Sted",c.Sted)}</div>
+  <div class="row">${input("d_Politikreds","Politikreds",c.Politikreds,"text",'list="politikredse"')}${input("d_Kilde","Kilde (døgnrapport, tip, X …)",c.Kilde)}</div>
+  ${textarea("d_Beskrivelse","Hvad skete der? (kort)",c.Beskrivelse)}`; }
+function formPolice(c){ return `
+  <div class="row">${input("d_PolitietsJournalnummer","Politiets j.nr.",c.PolitietsJournalnummer)}${input("d_KendtHosPolitiet","Oprettet hos politiet",c.KendtHosPolitiet,"date")}</div>
+  <div class="row">${input("d_AnholdtDato","Anholdt",c.AnholdtDato,"date")}${input("d_Grundlovsforhoer","Grundlovsforhør",c.Grundlovsforhoer,"date")}</div>
+  <div class="row">${select("d_Varetaegt","Varetægt",c.Varetaegt||"Nej",["Nej","Ja","Surrogat","Løsladt","Ukendt"])}${input("d_Faengslingsfrist","Fængslingsfrist",c.Faengslingsfrist,"date")}</div>
+  <div class="row">${input("d_SigtelsesDato","Sigtet (dato)",c.SigtelsesDato,"date")}${input("d_Sigtelse","Sigtet for",c.Sigtelse)}</div>
+  ${textarea("d_MistaenkteNavne","Mistænkte / mulige gerningspersoner (ét navn pr. linje)",c.MistaenkteNavne)}
+  <div class="actions"><button class="small" onclick="suspectsToPeople()">Opret mistænkte som personer</button></div>`; }
+function formCourtCase(c){ return `
+  <div class="row">${input("d_Anklagemyndighed","Anklagemyndighed",c.Anklagemyndighed)}${input("d_Ret","Ret (byret / landsret)",c.Ret)}</div>
+  <div class="row">${input("d_RettensSagsnummer","Rettens sagsnummer",c.RettensSagsnummer)}${input("d_TiltaleDato","Tiltale rejst",c.TiltaleDato,"date")}</div>
+  <div class="row">${select("d_Berammet","Berammet",c.Berammet||"Nej",["Nej","Ja","Ukendt"])}${input("d_Retsdage","Antal retsdage",c.Retsdage,"number")}</div>
+  ${textarea("d_Retsdatoer","Retsdatoer / vigtige datoer (fritekst)",c.Retsdatoer)}
+  <div class="notice">Tip: Læg hvert retsmøde ind under “Retsmøder”, så det kommer i kalenderen og tidslinjen.</div>
+  <div class="row">${input("d_DomDato","Dom afsagt",c.DomDato,"date")}${select("d_Udfald","Udfald",c.Udfald||"",["","Dømt","Delvist dømt","Frifundet","Tiltalefrafald","Påtaleopgivelse","Bødeforelæg vedtaget","Andet"])}</div>
+  ${input("d_Straf","Straf / afgørelse",c.Straf)}
+  <div class="row">${inputCalc("d_Ankefrist","Ankefrist",c.Ankefrist,"Dom + 14 d.","calcAnkefrist()")}<div>${select("d_Anket","Anket",c.Anket||"Nej",["Nej","Ja – af tiltalte","Ja – af anklagemyndigheden","Ja – begge","Ukendt"])}</div></div>
+  <div class="notice">Ankefristen beregnes som et forslag (14 dage, rykket til næste hverdag). Tjek altid fristen i den konkrete sag.</div>`; }
+function formAccess(c){ return `
+  ${input("d_Myndighed","Myndighed (modtager af anmodning)",c.Myndighed)}
+  ${textarea("d_Anmodning","Anmodning / sagstekst",c.Anmodning)}
+  <div class="row">${input("d_Sendt","Sendt",c.Sendt,"date")}${inputCalc("d_Frist","Svarfrist",c.Frist,"+7 arb.dage","calcFrist()")}</div>
+  <div class="row">${input("d_Klagefrist","Klagefrist",c.Klagefrist,"date")}<div></div></div>
+  <div class="notice">“+7 arb.dage” tæller fra afsendelse og springer weekender og helligdage over (offentlighedslovens § 36).</div>`; }
+function formResearch(c){ return `${textarea("d_Hypotese","Hypotese / mulig historie",c.Hypotese)}${textarea("d_Mangler","Dokumentation der mangler",c.Mangler)}${textarea("d_Noter","Noter",c.Noter)}${input("d_Tags","Tags",c.Tags)}`; }
+
+function listPhases(){
+  const r = rows("faseforloeb").slice().sort((a,b) => String(a.Dato).localeCompare(String(b.Dato)));
+  return r.map(f => `<div class="item"><strong>${esc(f.Fase)}</strong> <span class="badge">${esc(f.Dato ? fmtDate(f.Dato) : "uden dato")}</span>${f.Note?`<p>${esc(f.Note)}</p>`:""}<div class="actions"><button class="ghost small" onclick="removeRow('faseforloeb','FaseID',${jq(f.FaseID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen faseskift registreret endnu.</div>';
+}
+function formPhase(){
+  const c = current(), si = lists.stages.indexOf(c.Fase);
+  const next = lists.stages[Math.min(si+1, lists.stages.length-1)];
+  return `<div class="row">${select("ph_f","Fase",next,lists.stages)}${input("ph_d","Dato",today(),"date")}</div>${input("ph_n","Note (fx døgnrapport, pressemeddelelse, retslister)","")}<div class="actions"><button class="primary small" onclick="addPhaseFromForm()">Registrér fase</button></div><div class="notice">Sagens aktuelle fase følger altid det seneste faseskift – du kan også efterregistrere gamle faser.</div>`;
+}
+function listJournals(){ return rows("journalnumre").map(j => `<div class="item"><strong>${esc(j.Journalnummer)}</strong> <span class="badge blue">${esc(j.Type)}</span><p>${esc(j.Note||"")}</p><button class="ghost small" onclick="removeRow('journalnumre','JournalID',${jq(j.JournalID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen ekstra journalnumre.</div>'; }
+function formJournal(){ return `<div class="row">${input("jv","Journalnummer","")}${select("jt","Type","Politiets journalnummer",["Politiets journalnummer","Anklageskrift","Rettens sagsnummer","Ankenummer","Kommunalt journalnr.","Andet"])}</div>${textarea("jn","Note","")}<button class="primary small" onclick="addRow('journalnumre',{JournalID:uid('JNR'),SagsID:currentId,Journalnummer:$('jv').value,Type:$('jt').value,Note:$('jn').value,Oprettet:nowIso()})">Tilføj journalnummer</button>`; }
+function listPeople(){ return rows("personer").map(p => `<div class="item"><strong>${esc(p.Navn)}</strong> <span class="badge blue">${esc(p.Rolle)}</span>${p.Kontakt?`<div class="meta">${esc(p.Kontakt)}</div>`:""}${p.Myndighed?`<div class="meta">${esc(p.Myndighedsrelation||"Myndighed")}: ${esc(p.Myndighed)}</div>`:""}<p>${esc(p.Noter||"")}</p><button class="ghost small" onclick="removeRow('personer','PersonID',${jq(p.PersonID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen personer.</div>'; }
+function formPerson(){ return `<div class="row">${input("pn","Navn","")}${select("pr","Rolle","Mistænkt",lists.roles)}</div><div class="row">${input("pc","Kontakt","")}${input("pa","Myndighed / kontor","")}</div>${textarea("pno","Noter","")}<button class="primary small" onclick="addRow('personer',{PersonID:uid('PERS'),SagsID:currentId,Navn:$('pn').value,Rolle:$('pr').value,Kontakt:$('pc').value,Myndighed:$('pa').value,Noter:$('pno').value,Oprettet:nowIso()})">Tilføj person</button>`; }
+function listCharges(){ return rows("forhold").map(f => `<div class="item"><strong>Forhold ${esc(f.ForholdNr)}</strong> <span class="badge blue">${esc(f.Status)}</span><div class="meta">${esc(f.Lovgrundlag||"")}${f.DatoPeriode?" · "+esc(f.DatoPeriode):""}</div><p>${esc(f.Beskrivelse||"")}</p><button class="ghost small" onclick="removeRow('forhold','ForholdID',${jq(f.ForholdID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen forhold.</div>'; }
+function formCharge(){ return `<div class="row">${input("fn","Forhold nr.","")}${select("fs","Status","Rejst i anklageskrift",["Rejst i anklageskrift","Sigtet for","Efterforskes","Frafaldet","Domfældt","Frifundet","Ukendt"])}</div><div class="row">${input("fl","Lovgrundlag","")}${input("fd","Dato / periode","")}</div>${textarea("fb","Beskrivelse","")}${textarea("fno","Noter","")}<button class="primary small" onclick="addRow('forhold',{ForholdID:uid('FORHOLD'),SagsID:currentId,ForholdNr:$('fn').value,Status:$('fs').value,Lovgrundlag:$('fl').value,DatoPeriode:$('fd').value,Beskrivelse:$('fb').value,Noter:$('fno').value,Oprettet:nowIso()})">Tilføj forhold</button>`; }
+function listDocuments(){ return rows("dokumenter").map(d => `<div class="item"><strong>${esc(d.Titel||d.Filnavn||"Dokument")}</strong> <span class="badge blue">${esc(d.Type)}</span><div class="meta">${esc(d.Status||"")}${d.Dato?" · "+esc(fmtDate(d.Dato)):""}</div>${d.URL?`<p><a href="${esc(d.URL)}" target="_blank" rel="noopener">🔗 Link til dokument</a></p>`:""}<p>${esc(d.Noter||"")}</p><button class="ghost small" onclick="removeRow('dokumenter','DokumentID',${jq(d.DokumentID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen dokumenter.</div>'; }
+function formDocument(){ return `<div class="row">${select("dt","Dokumenttype","Aktindsigt",["Aktindsigt","Døgnrapport","Pressemeddelelse","Anklageskrift","Retsbog","Retsliste","Dom","Billede","Mail","Andet"])}${select("ds","Status","Mangler",["Mangler","Bestilt","Modtaget","Gennemgået","Brugt i artikel","Afvist"])}</div>${input("dti","Titel","")}<div class="row">${input("df","Filnavn","")}${input("dd","Dato","","date")}</div>${input("du","OneDrive/SharePoint-link","")}${textarea("dn","Noter","")}<button class="primary small" onclick="addRow('dokumenter',{DokumentID:uid('DOK'),SagsID:currentId,Type:$('dt').value,Status:$('ds').value,Titel:$('dti').value,Filnavn:$('df').value,Dato:$('dd').value,URL:$('du').value,Noter:$('dn').value,Oprettet:nowIso()})">Tilføj dokument</button>`; }
+function listArticles(){ return rows("artikler").map(a => `<div class="item"><strong>${esc(a.Titel||"Artikel")}</strong> <span class="badge blue">${esc(a.Type)}</span><div class="meta">${esc(a.Medie||"")}${a.Publiceringsdato?" · "+esc(fmtDate(a.Publiceringsdato)):""}</div>${a.URL?`<p><a href="${esc(a.URL)}" target="_blank" rel="noopener">📰 Åbn artikel</a></p>`:""}<p>${esc(a.Noter||"")}</p><button class="ghost small" onclick="removeRow('artikler','ArtikelID',${jq(a.ArtikelID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen artikler.</div>'; }
+function formArticle(){ return `<div class="row">${select("at","Artikeltype","SN",["SN","Eksternt medie"])}${input("am","Medie / sektion","")}</div>${input("ati","Rubrik / titel","")}${input("au","URL","")}<div class="row">${input("ad","Publiceringsdato","","date")}${select("as","Status","Publiceret",["Publiceret","Udkast","Opfølgning","Baggrund","Andet"])}</div>${textarea("an","Noter","")}<button class="primary small" onclick="addRow('artikler',{ArtikelID:uid('ART'),SagsID:currentId,Type:$('at').value,Medie:$('am').value,Titel:$('ati').value,URL:$('au').value,Publiceringsdato:$('ad').value,Status:$('as').value,Noter:$('an').value,Oprettet:nowIso()})">Tilføj artikel</button>`; }
+function listCourt(){
+  const t = today();
+  return rows("retsmoeder").slice().sort((a,b) => String(a.Dato).localeCompare(String(b.Dato)))
+    .map(r => `<div class="item"><strong>${esc(r.Dato?fmtDate(r.Dato):"Retsmøde")}${r.Starttid?" kl. "+esc(r.Starttid):""}</strong> <span class="badge ${String(r.Dato)>=t?"blue":""}">${esc(r.Type)}</span><div class="meta">${esc(r.Ret||"")}${r.Sal?" · sal "+esc(r.Sal):""}${r.Dommer?" · dommer "+esc(r.Dommer):""}</div><p>${esc(r.Noter||"")}</p><button class="ghost small" onclick="removeRow('retsmoeder','RetsmoedeID',${jq(r.RetsmoedeID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen retsmøder.</div>';
+}
+function formCourt(){ const c = current(); return `<div class="row">${input("rd","Dato","","date")}${input("rs","Starttid","","time")}</div><div class="row">${input("rr","Ret",c.Ret||"")}${input("rsal","Sal","")}</div><div class="row">${select("rt","Type","Retsmøde",["Grundlovsforhør","Fristforlængelse","Retsmøde","Hovedforhandling","Domsafsigelse","Anke","Andet"])}${input("rdom","Dommer","")}</div>${textarea("rn","Noter","")}<button class="primary small" onclick="addCourtFromForm()">Tilføj retsmøde</button>`; }
+function addCourtFromForm(){
+  if(!$("rd").value){ alert("Vælg en dato for retsmødet."); return; }
+  addRow('retsmoeder',{RetsmoedeID:uid('RET'),SagsID:currentId,Dato:$('rd').value,Starttid:$('rs').value,Ret:$('rr').value,Sal:$('rsal').value,Type:$('rt').value,Dommer:$('rdom').value,Noter:$('rn').value,Oprettet:nowIso()});
+}
+function listLog(){ return rows("log").slice().sort((a,b) => String(b.Dato).localeCompare(String(a.Dato))).map(l => `<div class="item"><strong>${esc(l.Type)}</strong><div class="meta">${esc(fmtDate(l.Dato))}</div><p>${esc(l.Tekst||"")}</p><button class="ghost small" onclick="removeRow('log','LogID',${jq(l.LogID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen log.</div>'; }
+function formLog(){ return `<div class="row">${input("ld","Dato",today(),"date")}${select("lt","Type","Telefonnotat",["Telefonnotat","Opkald til vagtchef","Pressemeddelelse","Døgnrapport","Anmodning sendt","Rykker sendt","Svar modtaget","Delvist svar","Afslag","Klage sendt","Dokument modtaget","Retsmøde","Andet"])}</div>${textarea("lx","Tekst","")}<button class="primary small" onclick="addRow('log',{LogID:uid('LOG'),SagsID:currentId,Dato:$('ld').value,Type:$('lt').value,Tekst:$('lx').value,Oprettet:nowIso()})">Tilføj logpunkt</button>`; }
+
+function templates(){
+  const c = current();
+  const ref = [c.PolitietsJournalnummer && "politiets j.nr. " + c.PolitietsJournalnummer, c.RettensSagsnummer && "rettens sagsnr. " + c.RettensSagsnummer].filter(Boolean).join(" / ");
+  const sag = (c.Titel || "[sag]") + (ref ? ` (${ref})` : "");
+  tplTexts = [
+    {title:"Aktindsigtsanmodning", text:
+`Kære ${c.Myndighed||"[myndighed]"}
+
+Jeg søger hermed aktindsigt/indsigt i materiale vedrørende ${sag}.
+
+Anmodningen omfatter:
+${c.Anmodning||"[beskriv dokumenter, bilag, retsbog, anklageskrift mv.]"}
+
+Hvis dele undtages, beder jeg om konkret begrundelse og meroffentlighedsvurdering.
+
+Venlig hilsen`},
+    {title:"Rykker – aktindsigt", text:
+`Kære ${c.Myndighed||"[myndighed]"}
+
+Den ${c.Sendt?fmtDate(c.Sendt):"[dato]"} anmodede jeg om aktindsigt i materiale vedrørende ${sag}.
+
+Jeg har endnu ikke modtaget en afgørelse. Jeg beder om en status og en forventet svardato, jf. offentlighedslovens § 36.
+
+Venlig hilsen`},
+    {title:"Til politiet – status på sagen", text:
+`Kære ${c.Politikreds||"[politikreds]"}
+
+Jeg følger hændelsen ${c.Haendelsesdato?"den "+fmtDate(c.Haendelsesdato)+" ":""}${c.Sted?"i/ved "+c.Sted+" ":""}– ${sag}.
+
+Kan I oplyse:
+– om der er anholdt eller sigtet nogen, og i givet fald for hvad
+– om der er eller skal være grundlovsforhør
+– sagens journalnummer, så jeg kan følge den videre
+
+Venlig hilsen`},
+    {title:"Til anklagemyndigheden – tiltale og berammelse", text:
+`Kære ${c.Anklagemyndighed||"[anklagemyndighed]"}
+
+Jeg følger sagen ${sag}.
+
+Vil I oplyse, om der er rejst tiltale, og om/hvornår sagen er berammet – herunder ret, retsdage og retssal?
+
+Venlig hilsen`},
+    {title:"Til retten – anklageskrift / dom", text:
+`Kære ${c.Ret||"[retten]"}
+
+Jeg er journalist og følger sagen ${sag}${c.DomDato?", hvor der blev afsagt dom den "+fmtDate(c.DomDato):""}.
+
+Jeg beder om at få tilsendt ${c.DomDato?"dommen":"anklageskriftet og en oversigt over berammede retsmøder"} i sagen.
+
+Venlig hilsen`}
+  ];
+  return tplTexts.map((t,i) => `<div class="item"><strong>${esc(t.title)}</strong><p style="white-space:pre-wrap">${esc(t.text)}</p><button class="small" onclick="copyTpl(${i})">Kopiér tekst</button></div>`).join("");
+}
+function copyTpl(i){
+  const txt = tplTexts[i]?.text || "";
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => flash("Tekst kopieret"), () => alert("Kunne ikke kopiere – markér teksten manuelt."));
+  else alert("Kopiering understøttes ikke her – markér teksten manuelt.");
+}
+
+/* ---------- Start ---------- */
+function init(){
+  toggleDetail(detailOpen);
+  if(recentFileName) $("fileStatus").innerHTML = `Seneste: <strong>${esc(recentFileName)}</strong>`;
+  updateExcelWarning();
+  document.querySelectorAll(".nav button").forEach(b => b.onclick = () => setView(b.dataset.view));
+  $("openBtn").onclick = openWorkbook; $("reopenBtn").onclick = reopenRecentWorkbook; $("forgetRecentBtn").onclick = forgetRecentWorkbook;
+  $("fileInput").onchange = importWorkbook; $("saveBtn").onclick = saveWorkbook; $("downloadBtn").onclick = downloadWorkbook;
+  $("dismissExcelWarningBtn").onclick = dismissExcelWarning;
+  $("newBtn").onclick = newCase;
+  $("toggleDetailBtn").addEventListener("click", () => toggleDetail());
+  $("search").oninput = render; $("sortBy").oninput = render;
+  $("selectVisibleBtn").onclick = () => { visibleIds.forEach(id => selected.add(id)); render(); };
+  $("clearSelectBtn").onclick = () => { selected.clear(); render(); };
+  $("deleteSelectedBtn").onclick = deleteSelected;
+  $("restoreSelectedBtn").onclick = restoreSelected;
+  document.addEventListener("keydown", e => { if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s"){ e.preventDefault(); saveWorkbook(); } });
+  window.addEventListener("beforeunload", e => { if(dirty){ e.preventDefault(); e.returnValue = ""; } });
+  // Tjek dato-skift ved midnat, så frister og "i dag" passer
+  let lastDay = today();
+  setInterval(() => { if(today() !== lastDay){ lastDay = today(); render(); renderDetail(); } }, 60000);
+  render(); renderDetail();
+}
+init();
+</script>
+</body>
+</html>
