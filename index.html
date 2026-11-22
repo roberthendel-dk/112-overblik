@@ -252,6 +252,10 @@ code{background:var(--sunken);padding:2px 5px;border-radius:4px;font-size:12px;w
 .autos{display:flex!important;gap:8px;align-items:center;color:#cdc8c0;font-weight:500;font-size:13px;margin:10px 0 0!important;cursor:pointer}
 .autos input{width:auto;accent-color:#fff}
 .bactions{display:flex;gap:6px;flex:none}
+.gor{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:12px;margin:14px 0}
+.gor:before,.gor:after{content:"";flex:1;height:1px;background:var(--line)}
+.gatebox .stack{display:grid;gap:8px}
+.filebox .links{flex-wrap:wrap;column-gap:12px;row-gap:2px}
 .kpi span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 @media(max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:1280px){.app,.app.detail-closed{grid-template-columns:220px minmax(0,1fr)}.detail{position:relative;height:auto;grid-column:1/-1;border-left:0;border-top:1px solid var(--line)}}
@@ -282,12 +286,12 @@ code{background:var(--sunken);padding:2px 5px;border-radius:4px;font-size:12px;w
     </div>
 
     <div class="filebox">
-      <strong>Dropbox</strong>
+      <strong id="storeTitle">Dropbox</strong>
       <button id="saveBtn" class="primary">Gem nu</button>
-      <label class="autos"><input type="checkbox" id="autoSave"> Gem automatisk</label>
+      <label class="autos" id="autoWrap"><input type="checkbox" id="autoSave"> Gem automatisk</label>
       <button id="reloadBtn">Hent nyeste version</button>
       <button id="pickBtn">Skift fil</button>
-      <div class="links"><button id="downloadBtn">Download kopi</button><button id="logoutBtn">Log ud</button></div>
+      <div class="links"><button id="downloadBtn">Download kopi</button><button id="switchBtn">Skift lagring</button><button id="logoutBtn">Log ud af Dropbox</button></div>
       <div class="status" id="fileStatus"></div>
       <div class="status" id="saveState"></div>
     </div>
@@ -335,6 +339,7 @@ code{background:var(--sunken);padding:2px 5px;border-radius:4px;font-size:12px;w
   <aside class="detail" id="detail"></aside>
 </div>
 <div class="toast" id="toast"></div>
+<input type="file" id="localFileInput" accept=".xlsx" style="display:none">
 
 <datalist id="politikredse">
   <option>Nordjyllands Politi</option><option>Østjyllands Politi</option><option>Midt- og Vestjyllands Politi</option>
@@ -516,6 +521,12 @@ const LSK = {key:"112dbx_appkey", tok:"112dbx_token", path:"112dbx_path", auto:"
 const REDIRECT_URI = location.origin + location.pathname.replace(/index\.html$/i, "");
 const dbx = {token: JSON.parse(localStorage.getItem(LSK.tok) || "null"), path: localStorage.getItem(LSK.path) || "", rev: "", account: "", saving: false, again: false, lastSaved: ""};
 let autoSave = localStorage.getItem(LSK.auto) !== "false";
+let storage = localStorage.getItem("112_storage") || "";          // "dropbox" eller "local"
+const local = {handle:null, name:"", lastMod:0};
+const fsOK = !!window.showOpenFilePicker;                          // Chrome/Edge kan skrive direkte i filer
+const XLSX_TYPES = [{description:"Excel", accept:{"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":[".xlsx"]}}];
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const currentKey = () => storage === "local" ? (local.name ? "local:" + local.name : "") : dbx.path;
 let autoTimer = null;
 const appKey = () => DROPBOX_APP_KEY || localStorage.getItem(LSK.key) || "";
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -595,8 +606,8 @@ async function dbxUpload(path, data, mode, autorename=false){
 function scheduleBackup(){ clearTimeout(scheduleBackup.t); scheduleBackup.t = setTimeout(flushBackup, 800); }
 function flushBackup(){
   clearTimeout(scheduleBackup.t);
-  if(!dirty || !workbookLoaded || !dbx.path) return;
-  try{ localStorage.setItem(LSK.backup, JSON.stringify({path:dbx.path, at:new Date().toISOString(), db, base})); }catch(e){}
+  if(!dirty || !workbookLoaded || !currentKey()) return;
+  try{ localStorage.setItem(LSK.backup, JSON.stringify({path:currentKey(), at:new Date().toISOString(), db, base})); }catch(e){}
 }
 function clearBackup(){ clearTimeout(scheduleBackup.t); localStorage.removeItem(LSK.backup); }
 
@@ -630,12 +641,13 @@ function mergeDb(b, local, remote){
 const sameDb = (a,b) => JSON.stringify(a) === JSON.stringify(b);
 
 /* Login-/filvælger-skærm */
-function showGate(state, msg=""){
+function showGate(state, msg="", extra=""){
   document.body.classList.add("locked"); $("gate").style.display = "flex";
   const err = msg ? `<div class="gerr">${esc(msg)}</div>` : "";
   const html = {
-    setup: `<h2>Forbind til Dropbox</h2><p>Indsæt App key fra din Dropbox-app (Dropbox App Console → din app → Settings).</p>${err}<input id="gKey" placeholder="App key" autocomplete="off"><div class="gactions"><span></span><button class="primary" onclick="saveAppKey()">Fortsæt</button></div><p class="gnote">Under “Redirect URIs” i Dropbox skal denne adresse stå:<br><code>${esc(REDIRECT_URI)}</code></p>`,
-    login: `<h2>Log ind</h2><p>Log ind med den Dropbox-konto, der har adgang til 112-databasen.</p>${err}<button class="primary big" onclick="dbxLogin()">Log ind med Dropbox</button>`,
+    setup: `<h2>Forbind til Dropbox</h2><p>Indsæt App key fra din Dropbox-app (Dropbox App Console → din app → Settings).</p>${err}<input id="gKey" placeholder="App key" autocomplete="off"><div class="gactions"><button class="ghost" onclick="chooseStorage()">← Tilbage</button><button class="primary" onclick="saveAppKey()">Fortsæt</button></div><p class="gnote">Under “Redirect URIs” i Dropbox skal denne adresse stå:<br><code>${esc(REDIRECT_URI)}</code></p>`,
+    login: `<h2>Hvor ligger databasen?</h2><p>Log ind med den Dropbox-konto, der har adgang til 112-databasen – eller arbejd i en Excel-fil på din computer.</p>${err}<button class="primary big" onclick="startDropbox()">Log ind med Dropbox</button><div class="gor">eller</div><button class="big" onclick="showLocalGate()">Brug en lokal Excel-fil</button>`,
+    local: `<h2>Lokal Excel-fil</h2><p>Vælg Excel-databasen på din computer, fx i en OneDrive-mappe.</p>${err}<div class="stack">${extra ? `<button class="primary big" onclick="reopenLocal()">Åbn ${esc(extra)}</button><button class="big" onclick="openLocal()">Vælg en anden fil …</button>` : `<button class="primary big" onclick="openLocal()">Vælg Excel-fil …</button>`}</div><div class="gactions"><button class="ghost" onclick="chooseStorage()">← Tilbage</button><button class="ghost" onclick="createLocal()">Opret ny database</button></div>${fsOK ? "" : '<p class="gnote">Din browser (fx Safari eller Firefox) kan ikke gemme direkte i filen. “Gem” henter i stedet en opdateret kopi ned, som du selv skal lægge i stedet for den gamle. Brug Chrome eller Edge for at gemme direkte.</p>'}`,
     loading: `<div class="center"><div class="spinner"></div><p>${esc(msg || "Henter …")}</p></div>`,
     error: `<h2>Noget gik galt</h2>${err}<div class="gactions"><button class="ghost" onclick="dbxLogout()">Log ud</button><span style="display:flex;gap:8px"><button onclick="showPicker(dirOf(dbx.path))">Vælg en anden fil</button><button class="primary" onclick="boot()">Prøv igen</button></span></div>`
   }[state];
@@ -643,7 +655,130 @@ function showGate(state, msg=""){
   if(state === "setup") $("gKey").focus();
 }
 function hideGate(){ $("gate").style.display = "none"; document.body.classList.remove("locked"); }
-function saveAppKey(){ const k = $("gKey").value.trim(); if(!k) return; localStorage.setItem(LSK.key, k); boot(); }
+function saveAppKey(){ const k = $("gKey").value.trim(); if(!k) return; localStorage.setItem(LSK.key, k); dbxLogin(); }
+function setStorage(v){ storage = v; v ? localStorage.setItem("112_storage", v) : localStorage.removeItem("112_storage"); }
+function startDropbox(){ setStorage("dropbox"); if(!appKey()) return showGate("setup"); if(dbx.token) return boot(); dbxLogin(); }
+function chooseStorage(){
+  if(workbookLoaded){
+    if(dirty && !confirm("Du har ændringer, der ikke er gemt. Vil du skifte lagring og kassere dem?")) return;
+    setStorage(""); clearBackup(); dirty = false; location.reload(); return;
+  }
+  setStorage(""); showGate("login");
+}
+
+/* ---------- Lokal Excel-fil ---------- */
+function idbOpen(){ return new Promise((res, rej) => { const r = indexedDB.open("112overblik_db", 1); r.onupgradeneeded = () => r.result.createObjectStore("handles"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbSet(k, v){ const d = await idbOpen(); return new Promise((res, rej) => { const tx = d.transaction("handles","readwrite"); tx.objectStore("handles").put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+async function idbGet(k){ const d = await idbOpen(); return new Promise((res, rej) => { const r = d.transaction("handles","readonly").objectStore("handles").get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function verifyFilePermission(h, rw=true){
+  if(!h || !h.queryPermission) return false;
+  const o = {mode: rw ? "readwrite" : "read"};
+  if(await h.queryPermission(o) === "granted") return true;
+  return await h.requestPermission(o) === "granted";
+}
+async function showLocalGate(msg=""){
+  setStorage("local");
+  let recent = null; if(fsOK){ try{ recent = await idbGet("recentWorkbookHandle"); }catch(e){} }
+  showGate("local", msg, recent ? recent.name : "");
+}
+function confirmSwitchFile(){ return !(workbookLoaded && dirty) || confirm("Du har ændringer, der ikke er gemt. Vil du åbne en anden fil og kassere dem?"); }
+async function openLocal(){
+  if(!confirmSwitchFile()) return;
+  if(!fsOK){ $("localFileInput").click(); return; }
+  try{ const [h] = await window.showOpenFilePicker({types:XLSX_TYPES, multiple:false}); await loadLocalHandle(h); }
+  catch(e){ if(e.name !== "AbortError") showLocalGate("Kunne ikke åbne filen: " + e.message); }
+}
+async function reopenLocal(){
+  try{
+    const h = await idbGet("recentWorkbookHandle");
+    if(!h) return openLocal();
+    if(!await verifyFilePermission(h, true)) return showLocalGate("Browseren gav ikke adgang til filen. Vælg den igen.");
+    await loadLocalHandle(h);
+  }catch(e){ showLocalGate("Kunne ikke åbne filen. Den er måske flyttet eller omdøbt – vælg den igen."); }
+}
+async function loadLocalHandle(h){
+  const f = await h.getFile();
+  local.handle = h; local.name = f.name; local.lastMod = f.lastModified;
+  try{ await idbSet("recentWorkbookHandle", h); }catch(e){}
+  finishLocalOpen(await f.arrayBuffer(), f.lastModified);
+}
+async function importLocal(e){
+  const f = e.target.files[0]; e.target.value = ""; if(!f) return;
+  if(workbookLoaded && dirty) clearBackup();
+  local.handle = null; local.name = f.name; local.lastMod = f.lastModified;
+  finishLocalOpen(await f.arrayBuffer(), f.lastModified);
+}
+function finishLocalOpen(buf, lastMod){
+  let remote;
+  try{ remote = parseWorkbook(buf); }catch(e){ return showLocalGate("Filen kunne ikke læses som en Excel-fil."); }
+  setStorage("local");
+  dbx.lastSaved = lastMod ? new Date(lastMod).toISOString() : "";
+  restoreOrApply(remote);
+  applyModeUi(); updateFileStatus(); hideGate();
+}
+async function createLocal(){
+  const empty = Object.fromEntries(Object.keys(SHEETS).map(k => [k, []]));
+  const data = XLSX.write(buildWorkbook(empty), {bookType:"xlsx", type:"array"});
+  if(fsOK){
+    try{
+      const h = await window.showSaveFilePicker({suggestedName:"112-overblik database.xlsx", types:XLSX_TYPES});
+      const w = await h.createWritable(); await w.write(data); await w.close();
+      await loadLocalHandle(h);
+    }catch(e){ if(e.name !== "AbortError") showLocalGate("Kunne ikke oprette filen: " + e.message); }
+  } else {
+    downloadBlob(new Blob([data], {type:XLSX_MIME}), "112-overblik database.xlsx");
+    local.handle = null; local.name = "112-overblik database.xlsx"; local.lastMod = 0;
+    finishLocalOpen(data, 0);
+    flash("Den nye database er hentet ned – gem den et fast sted");
+  }
+}
+async function saveLocal({silent=false}={}){
+  if(!local.handle){
+    if(silent) return;                       // automatisk gem kan ikke hente filer ned
+    const out = XLSX.write(buildWorkbook(), {bookType:"xlsx", type:"array"});
+    downloadBlob(new Blob([out], {type:XLSX_MIME}), local.name.replace(/\.xlsx$/i, "") + "_opdateret.xlsx");
+    base = clone(db); dbx.lastSaved = new Date().toISOString(); setDirty(false);
+    flash("Opdateret fil hentet ned – læg den i stedet for den gamle");
+    return;
+  }
+  if(dbx.saving){ dbx.again = true; return; }
+  clearTimeout(autoTimer); dbx.saving = true; setSaveState();
+  let merged = false;
+  try{
+    const f = await local.handle.getFile();
+    if(local.lastMod && f.lastModified !== local.lastMod){   // filen er ændret udefra (fx via OneDrive) → flet
+      db = mergeDb(base, db, parseWorkbook(await f.arrayBuffer())); merged = true;
+    }
+    const snap = clone(db);
+    const w = await local.handle.createWritable();
+    await w.write(XLSX.write(buildWorkbook(snap), {bookType:"xlsx", type:"array"})); await w.close();
+    const f2 = await local.handle.getFile();
+    local.lastMod = f2.lastModified; dbx.lastSaved = new Date(f2.lastModified).toISOString(); base = snap;
+    dbx.saving = false;
+    if(sameDb(db, snap)) setDirty(false); else setSaveState();
+    if(merged){ render(); renderDetail(); flash("Gemt · ændringer fra en anden er flettet ind"); }
+    else if(!silent) flash("Gemt i Excel-filen");
+  }catch(e){
+    dbx.saving = false; flushBackup();
+    if(merged){ render(); renderDetail(); }
+    if(e.name === "NotAllowedError" && !silent && await verifyFilePermission(local.handle, true)){ dbx.again = true; return; }
+    const msg = e.name === "NotAllowedError" ? "Browseren har ikke tilladelse til at skrive i filen." : ["NoModificationAllowedError","InvalidStateError"].includes(e.name) ? "Filen er låst – er den åben i Excel?" : e.message;
+    if(silent) showBanner("Automatisk gem fejlede", msg + " Dine ændringer er gemt midlertidigt i browseren.", "Prøv igen", () => saveWorkbook());
+    else alert("Kunne ikke gemme: " + msg + "\n\nDine ændringer er ikke tabt. Prøv igen, eller brug “Download kopi”.");
+  }finally{
+    dbx.saving = false; setSaveState();
+    if(dbx.again){ dbx.again = false; if(dirty) saveWorkbook({silent:true}); }
+  }
+}
+function applyModeUi(){
+  const loc = storage === "local", direct = !loc || !!local.handle;
+  $("storeTitle").textContent = loc ? "Lokal Excel-fil" : "Dropbox";
+  $("saveBtn").textContent = direct ? "Gem nu" : "Download opdateret fil";
+  $("autoWrap").style.display = direct ? "" : "none";
+  $("reloadBtn").style.display = direct ? "" : "none";
+  $("pickBtn").textContent = loc ? "Åbn anden fil" : "Skift fil";
+  $("logoutBtn").style.display = loc ? "none" : "";
+}
 
 async function showPicker(path=""){
   showGate("loading", "Henter mapper fra Dropbox …");
@@ -665,7 +800,7 @@ async function showPicker(path=""){
       ${files.map(f => `<div class="pitem file" onclick="openFromPicker(${jq(f.path_display)})"><i class="ico"></i><span class="nm">${esc(f.name)}</span><span class="when">${esc(fmtTime(f.server_modified))}</span></div>`).join("")}
       ${!folders.length && !files.length ? '<div class="pempty">Ingen mapper eller Excel-filer her.</div>' : ""}
     </div>
-    <div class="gactions">${workbookLoaded ? '<button class="ghost" onclick="hideGate()">Annullér</button>' : '<button class="ghost" onclick="dbxLogout()">Log ud</button>'}<button onclick="createDatabase(${jq(path)})">Opret ny database her</button></div>`;
+    <div class="gactions">${workbookLoaded ? '<button class="ghost" onclick="hideGate()">Annullér</button>' : '<button class="ghost" onclick="chooseStorage()">← Tilbage</button>'}<button onclick="createDatabase(${jq(path)})">Opret ny database her</button></div>`;
 }
 async function openFromPicker(path){
   if(workbookLoaded && dirty && path.toLowerCase() !== dbx.path.toLowerCase()){
@@ -694,18 +829,27 @@ async function openDropboxFile(path){
   showGate("loading", "Henter " + baseName(path) + " …");
   const {buf, meta} = await dbxDownload(path);
   const remote = parseWorkbook(buf);
-  let bk = null; try{ bk = JSON.parse(localStorage.getItem(LSK.backup) || "null"); }catch(e){}
   dbx.path = meta.path_display || path; dbx.rev = meta.rev; dbx.lastSaved = meta.server_modified || "";
   localStorage.setItem(LSK.path, dbx.path);
-  const restore = bk && bk.db && String(bk.path).toLowerCase() === dbx.path.toLowerCase() &&
-    confirm(`Der er ændringer fra ${fmtTime(bk.at)}, som ikke nåede at blive gemt i Dropbox.\n\nVil du gendanne dem? De bliver flettet sammen med den nyeste version.`);
+  restoreOrApply(remote);
+  applyModeUi(); updateFileStatus();
+  hideGate();
+}
+function restoreOrApply(remote){
+  let bk = null; try{ bk = JSON.parse(localStorage.getItem(LSK.backup) || "null"); }catch(e){}
+  const restore = bk && bk.db && String(bk.path).toLowerCase() === String(currentKey()).toLowerCase() &&
+    confirm(`Der er ændringer fra ${fmtTime(bk.at)}, som ikke nåede at blive gemt.\n\nVil du gendanne dem? De bliver flettet sammen med den nyeste version af filen.`);
   applyDb(remote);
   if(restore){ db = mergeDb(bk.base, bk.db, remote); setDirty(true); render(); renderDetail(); flash("Dine ikke-gemte ændringer er gendannet"); }
-  updateFileStatus();
-  hideGate();
 }
 async function reloadFromDropbox(){
   if(dirty){ await saveWorkbook(); return; }
+  if(storage === "local"){
+    if(!local.handle) return;
+    try{ const f = await local.handle.getFile(); local.lastMod = f.lastModified; dbx.lastSaved = new Date(f.lastModified).toISOString(); applyDb(parseWorkbook(await f.arrayBuffer()), true); updateFileStatus(); flash("Filen er indlæst igen"); }
+    catch(e){ alert("Kunne ikke læse filen igen: " + e.message); }
+    return;
+  }
   try{
     const {buf, meta} = await dbxDownload(dbx.path);
     dbx.rev = meta.rev; dbx.lastSaved = meta.server_modified || "";
@@ -713,7 +857,21 @@ async function reloadFromDropbox(){
   }catch(e){ e.auth ? showGate("login", "Log ind igen.") : alert(e.message); }
 }
 async function checkRemote(){
-  if(!workbookLoaded || !dbx.path || dbx.saving || document.hidden) return;
+  if(!workbookLoaded || dbx.saving || document.hidden) return;
+  if(storage === "local"){
+    if(!local.handle) return;
+    try{
+      const f = await local.handle.getFile();
+      if(f.lastModified === local.lastMod) return;
+      if(dirty){ if(autoSave) saveWorkbook({silent:true}); return; }
+      const d = parseWorkbook(await f.arrayBuffer());
+      if(dirty || dbx.saving) return;
+      local.lastMod = f.lastModified; dbx.lastSaved = new Date(f.lastModified).toISOString();
+      applyDb(d, true); updateFileStatus(); flash("Opdateret med nyeste ændringer fra filen");
+    }catch(e){}
+    return;
+  }
+  if(!dbx.path) return;
   try{
     const m = await rpc("files/get_metadata", {path:dbx.path});
     if(!m.rev || m.rev === dbx.rev) return;
@@ -731,15 +889,19 @@ async function checkRemote(){
 async function dbxLogout(){
   if(dirty && !confirm("Du har ændringer, der ikke er gemt i Dropbox. Log ud alligevel?")) return;
   try{ if(dbx.token) await rpc("auth/token/revoke"); }catch(e){}
-  saveToken(null); clearBackup(); dirty = false; location.reload();
+  saveToken(null); setStorage(""); clearBackup(); dirty = false; location.reload();
 }
 function updateFileStatus(){
+  if(storage === "local"){
+    $("fileStatus").innerHTML = `<strong>${esc(local.name)}</strong><br>${local.handle ? "Gemmer direkte i filen" : "Din browser kan ikke gemme direkte. “Download opdateret fil” henter en ny kopi, som skal erstatte den gamle."}`;
+    return setSaveState();
+  }
   $("fileStatus").innerHTML = dbx.path ? `<strong>${esc(baseName(dbx.path))}</strong><br>${esc(dirOf(dbx.path) || "/")}${dbx.account ? `<br>Logget ind som ${esc(dbx.account)}` : ""}` : "";
   setSaveState();
 }
 function setSaveState(){
   const st = $("saveState");
-  if(st) st.innerHTML = dbx.saving ? "Gemmer i Dropbox …" : dirty ? '<span class="unsaved">● Ikke gemt endnu</span>' : dbx.lastSaved ? `Senest gemt ${esc(fmtTime(dbx.lastSaved))}` : "";
+  if(st) st.innerHTML = dbx.saving ? "Gemmer …" : dirty ? '<span class="unsaved">● Ikke gemt endnu</span>' : dbx.lastSaved ? `Senest gemt ${esc(fmtTime(dbx.lastSaved))}` : "";
   const el = $("dirtyState");
   if(el){ el.textContent = dbx.saving ? "Gemmer …" : dirty ? "Ikke gemt" : "Gemt"; el.className = dirty || dbx.saving ? "dirty" : "saved"; }
 }
@@ -751,6 +913,10 @@ function showBanner(title, text, btn, fn){
 function hideBanner(){ $("banner").classList.remove("show"); }
 
 async function boot(){
+  const q = new URLSearchParams(location.search);
+  if(q.has("code") || q.has("error")) setStorage("dropbox");
+  if(storage === "local") return showLocalGate();
+  if(storage !== "dropbox") return showGate("login");
   if(!appKey()) return showGate("setup");
   try{
     await handleRedirect();
@@ -816,8 +982,12 @@ function dashboardRows(){
   ];
 }
 function listRows(){ const n = Math.max(...Object.values(lists).map(l => l.length)); return Array.from({length:n}, (_,i) => ({Sagstyper:lists.types[i]||"", Faser:lists.stages[i]||"", Status:lists.statuses[i]||"", Roller:lists.roles[i]||""})); }
-async function saveWorkbook({silent=false}={}){
-  if(!workbookLoaded || !dbx.path) return;
+async function saveWorkbook(opts={}){
+  if(!workbookLoaded) return;
+  return storage === "local" ? saveLocal(opts) : saveDropbox(opts);
+}
+async function saveDropbox({silent=false}={}){
+  if(!dbx.path) return;
   if(dbx.saving){ dbx.again = true; return; }
   clearTimeout(autoTimer); dbx.saving = true; setSaveState();
   let merged = false;
@@ -852,7 +1022,7 @@ async function saveWorkbook({silent=false}={}){
 }
 function downloadWorkbook(){
   downloadBlob(new Blob([XLSX.write(buildWorkbook(),{bookType:"xlsx",type:"array"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),
-    (baseName(dbx.path) || "112_overblik_database.xlsx").replace(/\.xlsx$/i,"") + "_kopi.xlsx");
+    ((storage === "local" ? local.name : baseName(dbx.path)) || "112_overblik_database.xlsx").replace(/\.xlsx$/i,"") + "_kopi.xlsx");
 }
 function downloadBlob(blob,name){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
 
@@ -1401,7 +1571,8 @@ function init(){
   toggleDetail(detailOpen);
   document.querySelectorAll(".nav button").forEach(b => b.onclick = () => setView(b.dataset.view));
   $("saveBtn").onclick = () => saveWorkbook(); $("reloadBtn").onclick = reloadFromDropbox;
-  $("pickBtn").onclick = () => showPicker(dirOf(dbx.path)); $("downloadBtn").onclick = downloadWorkbook; $("logoutBtn").onclick = dbxLogout;
+  $("pickBtn").onclick = () => storage === "local" ? openLocal() : showPicker(dirOf(dbx.path));
+  $("switchBtn").onclick = chooseStorage; $("localFileInput").onchange = importLocal; $("downloadBtn").onclick = downloadWorkbook; $("logoutBtn").onclick = dbxLogout;
   $("autoSave").checked = autoSave;
   $("autoSave").onchange = e => { autoSave = e.target.checked; localStorage.setItem(LSK.auto, autoSave); if(autoSave && dirty) saveWorkbook({silent:true}); };
   $("bannerClose").onclick = hideBanner;
