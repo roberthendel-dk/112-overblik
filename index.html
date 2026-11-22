@@ -74,7 +74,7 @@ a:hover{text-decoration:underline}
 .top .spacer{flex:1}
 
 /* Nøgletal */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:18px;overflow:hidden}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:18px;overflow:hidden}
 .kpi{background:var(--surface);padding:14px 16px;cursor:pointer;transition:background .12s}
 .kpi:hover{background:#faf9f6}
 .kpi strong{display:block;font-size:26px;font-weight:650;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.15}
@@ -221,15 +221,49 @@ details[open] summary{border-bottom:1px solid var(--line)}
 
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(6px);background:var(--ink);color:#fff;padding:9px 14px;border-radius:9px;font-weight:600;font-size:13px;opacity:0;transition:opacity .18s,transform .18s;pointer-events:none;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.18)}
 .toast.show{opacity:1;transform:translateX(-50%)}
+/* Login / filvælger */
+body.locked{overflow:hidden}
+.gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:20;padding:20px;overflow:auto}
+.gatebox{width:100%;max-width:460px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 40px rgba(20,18,15,.08);padding:28px}
+.gbrand{font:700 22px/1 Georgia,"Times New Roman",serif;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.gbrand:before{content:"";width:9px;height:9px;border-radius:50%;background:#e5484d;box-shadow:0 0 0 4px rgba(229,72,77,.18)}
+.gatebox h2{font-size:18px;font-weight:650;letter-spacing:-.015em;margin:0 0 6px}
+.gatebox p{color:var(--muted);margin:0 0 16px}
+.gatebox button.big{width:100%;padding:11px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:9px}
+.gatebox .center{text-align:center}
+.gerr{background:var(--red-soft);color:var(--red);border-radius:8px;padding:9px 11px;margin:0 0 14px;font-size:13px}
+.gnote{font-size:12px;margin-top:14px!important}
+code{background:var(--sunken);padding:2px 5px;border-radius:4px;font-size:12px;word-break:break-all}
+.crumb{font-size:12.5px;color:var(--muted);margin-bottom:8px;overflow-wrap:anywhere}
+.crumb a{cursor:pointer;color:var(--blue);font-weight:600}
+.plist{border:1px solid var(--line);border-radius:10px;max-height:340px;overflow:auto}
+.pitem{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--line);cursor:pointer;font-weight:500}
+.pitem:first-child{border-top:0}
+.pitem:hover{background:#faf9f6}
+.pitem .nm{flex:1;min-width:0;overflow-wrap:anywhere}
+.pitem .when{color:var(--faint);font-size:12px;font-weight:400;white-space:nowrap}
+.pitem .ico{width:16px;height:12px;border-radius:2px;background:#cdbb8e;flex:none}
+.pitem.file .ico{height:16px;width:13px;background:#1d6f42;border-radius:2px}
+.pitem.up{color:var(--muted)}
+.pempty{padding:16px;text-align:center;color:var(--muted);font-size:13px}
+.gactions{display:flex;gap:8px;margin-top:14px;justify-content:space-between}
+.spinner{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--ink);border-radius:50%;animation:spin .8s linear infinite;margin:6px auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.autos{display:flex!important;gap:8px;align-items:center;color:#cdc8c0;font-weight:500;font-size:13px;margin:10px 0 0!important;cursor:pointer}
+.autos input{width:auto;accent-color:#fff}
+.bactions{display:flex;gap:6px;flex:none}
+.kpi span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:1280px){.app,.app.detail-closed{grid-template-columns:220px minmax(0,1fr)}.detail{position:relative;height:auto;grid-column:1/-1;border-left:0;border-top:1px solid var(--line)}}
 @media(max-width:760px){.app{display:block}.sidebar{height:auto;position:relative}.row,.row3,.facts{grid-template-columns:1fr}.main{padding:16px}.phase,.cfoot{margin-left:0}.cfoot{flex-direction:column;align-items:flex-start}}
 </style>
 </head>
-<body>
+<body class="locked">
+<div class="gate" id="gate"><div class="gatebox"><div class="gbrand">112-overblik</div><div id="gateBody"><div class="spinner"></div></div></div></div>
 <div class="app" id="appShell">
   <aside class="sidebar">
     <div class="brand">112-overblik</div>
-    <div class="brandline">Fra hændelse til dom · v3.1<br>Udviklet af RH 🤓</div>
+    <div class="brandline">Fra hændelse til dom · v4.0<br>Udviklet af RH 🤓</div>
 
     <div class="nav">
       <div class="sidegroup">Overblik</div>
@@ -248,13 +282,13 @@ details[open] summary{border-bottom:1px solid var(--line)}
     </div>
 
     <div class="filebox">
-      <strong>Excel-database</strong>
-      <button id="saveBtn" class="primary" disabled>Gem til Excel</button>
-      <button id="openBtn">Åbn Excel-fil</button>
-      <button id="reopenBtn">Genåbn seneste fil</button>
-      <div class="links"><button id="downloadBtn" disabled>Download kopi</button><button id="forgetRecentBtn">Glem seneste fil</button></div>
-      <input id="fileInput" type="file" accept=".xlsx,.xls" style="display:none">
-      <div class="status" id="fileStatus">Ingen fil åbnet.</div>
+      <strong>Dropbox</strong>
+      <button id="saveBtn" class="primary">Gem nu</button>
+      <label class="autos"><input type="checkbox" id="autoSave"> Gem automatisk</label>
+      <button id="reloadBtn">Hent nyeste version</button>
+      <button id="pickBtn">Skift fil</button>
+      <div class="links"><button id="downloadBtn">Download kopi</button><button id="logoutBtn">Log ud</button></div>
+      <div class="status" id="fileStatus"></div>
       <div class="status" id="saveState"></div>
     </div>
   </aside>
@@ -269,12 +303,9 @@ details[open] summary{border-bottom:1px solid var(--line)}
 
     <section class="kpis" id="kpis"></section>
 
-    <div class="warning" id="excelWarning">
-      <div>
-        <strong>Ingen Excel-fil er indlæst</strong>
-        <p id="excelWarningText">Åbn den fælles Excel-database, før du arbejder videre.</p>
-      </div>
-      <button class="ghost small" id="dismissExcelWarningBtn">Luk</button>
+    <div class="warning" id="banner">
+      <div><strong id="bannerTitle"></strong><p id="bannerText"></p></div>
+      <div class="bactions"><button class="small" id="bannerBtn"></button><button class="ghost small" id="bannerClose">Luk</button></div>
     </div>
 
     <section id="overview"></section>
@@ -370,12 +401,9 @@ let currentView = "dashboard";
 let selected = new Set();
 let visibleIds = [];
 let dirty = false;
-let fileHandle = null;
-let fileName = "";
 let detailOpen = localStorage.getItem("112overblik_detailOpen") !== "false";
-let recentFileName = localStorage.getItem("112overblik_recentFileName") || "";
 let workbookLoaded = false;
-let excelWarningDismissed = localStorage.getItem("112overblik_excelWarningDismissed") === "true";
+let base = null;   // databasen som den så ud ved seneste hent/gem – bruges til at flette ændringer
 let openSections = new Set(JSON.parse(localStorage.getItem("112overblik_openSections") || '["tidslinje","haendelse"]'));
 let lastDetailId = "";
 let tplTexts = [];
@@ -395,9 +423,11 @@ function trackOf(c){
 }
 function setDirty(v=true){
   dirty = v;
-  const el = $("dirtyState");
-  if(el){ el.textContent = v ? "Ikke gemt" : "Gemt"; el.className = v ? "dirty" : "saved"; }
-  $("saveState").innerHTML = v ? '<span class="unsaved">● Ændringer er ikke gemt i Excel</span>' : "";
+  setSaveState();
+  if(v){
+    scheduleBackup();
+    if(autoSave && workbookLoaded){ clearTimeout(autoTimer); autoTimer = setTimeout(() => saveWorkbook({silent:true}), 3000); }
+  } else clearBackup();
 }
 function flash(msg){ const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(flash._t); flash._t = setTimeout(() => t.classList.remove("show"), 1800); }
 
@@ -480,71 +510,264 @@ function gaps(c){
   return g;
 }
 
-/* ---------- Filer: IndexedDB-håndtag ---------- */
-function idbOpen(){
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open("112overblik_db", 1);
-    req.onupgradeneeded = () => req.result.createObjectStore("handles");
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function idbSet(key, value){ const dbi = await idbOpen(); return new Promise((res, rej) => { const tx = dbi.transaction("handles","readwrite"); tx.objectStore("handles").put(value, key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
-async function idbGet(key){ const dbi = await idbOpen(); return new Promise((res, rej) => { const tx = dbi.transaction("handles","readonly"); const r = tx.objectStore("handles").get(key); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
-async function idbDelete(key){ const dbi = await idbOpen(); return new Promise((res, rej) => { const tx = dbi.transaction("handles","readwrite"); tx.objectStore("handles").delete(key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
-async function verifyFilePermission(handle, readWrite=false){
-  if(!handle || !handle.queryPermission) return false;
-  const opts = {mode: readWrite ? "readwrite" : "read"};
-  if(await handle.queryPermission(opts) === "granted") return true;
-  if(await handle.requestPermission(opts) === "granted") return true;
-  return false;
-}
-function confirmDiscard(){ return !dirty || confirm("Du har ændringer, der ikke er gemt i Excel. Vil du åbne en anden fil og kassere dem?"); }
+/* ---------- Dropbox ---------- */
+const DROPBOX_APP_KEY = "";   // App key fra Dropbox App Console (kan også indtastes i appen)
+const LSK = {key:"112dbx_appkey", tok:"112dbx_token", path:"112dbx_path", auto:"112dbx_autosave", backup:"112dbx_backup"};
+const REDIRECT_URI = location.origin + location.pathname.replace(/index\.html$/i, "");
+const dbx = {token: JSON.parse(localStorage.getItem(LSK.tok) || "null"), path: localStorage.getItem(LSK.path) || "", rev: "", account: "", saving: false, again: false, lastSaved: ""};
+let autoSave = localStorage.getItem(LSK.auto) !== "false";
+let autoTimer = null;
+const appKey = () => DROPBOX_APP_KEY || localStorage.getItem(LSK.key) || "";
+const clone = o => JSON.parse(JSON.stringify(o));
+const baseName = p => String(p || "").split("/").pop();
+const dirOf = p => String(p || "").split("/").slice(0, -1).join("/");
+const fmtTime = iso => iso ? new Date(iso).toLocaleString("da-DK", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}) : "";
+const hdrJson = v => JSON.stringify(v).replace(/[\u007f-￿]/g, c => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const randStr = n => { const a = new Uint8Array(n); crypto.getRandomValues(a); return b64url(a).slice(0, n); };
+class AuthError extends Error{ constructor(){ super("Du er ikke logget ind i Dropbox."); this.auth = true; } }
 
-async function reopenRecentWorkbook(){
-  if(!window.showOpenFilePicker){ alert("Din browser understøtter ikke genåbning af seneste fil. Brug “Åbn Excel-fil”."); return; }
-  if(!confirmDiscard()) return;
+async function dbxLogin(){
+  flushBackup();
+  const verifier = randStr(64), state = randStr(16);
+  sessionStorage.setItem("112dbx_verifier", verifier); sessionStorage.setItem("112dbx_state", state);
+  const challenge = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  const q = new URLSearchParams({client_id:appKey(), response_type:"code", code_challenge:challenge, code_challenge_method:"S256", redirect_uri:REDIRECT_URI, token_access_type:"offline", state});
+  location.href = "https://www.dropbox.com/oauth2/authorize?" + q;
+}
+function saveToken(t){ dbx.token = t; t ? localStorage.setItem(LSK.tok, JSON.stringify(t)) : localStorage.removeItem(LSK.tok); }
+async function tokenRequest(params){
+  const r = await fetch("https://api.dropboxapi.com/oauth2/token", {method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"}, body:new URLSearchParams({client_id:appKey(), ...params})});
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error(j.error_description || j.error || "Login i Dropbox fejlede.");
+  return j;
+}
+async function handleRedirect(){
+  const q = new URLSearchParams(location.search);
+  if(!q.has("code") && !q.has("error")) return false;
+  history.replaceState(null, "", REDIRECT_URI);
+  if(q.has("error")) throw new Error(q.get("error") === "access_denied" ? "Du afviste adgangen i Dropbox." : (q.get("error_description") || "Login blev afbrudt."));
+  if(q.get("state") !== sessionStorage.getItem("112dbx_state")) throw new Error("Login kunne ikke bekræftes. Prøv igen.");
+  const j = await tokenRequest({code:q.get("code"), grant_type:"authorization_code", code_verifier:sessionStorage.getItem("112dbx_verifier"), redirect_uri:REDIRECT_URI});
+  sessionStorage.removeItem("112dbx_verifier"); sessionStorage.removeItem("112dbx_state");
+  saveToken({access:j.access_token, refresh:j.refresh_token, exp:Date.now() + ((j.expires_in || 14400) - 60) * 1000});
+  return true;
+}
+async function accessToken(force=false){
+  if(!dbx.token) throw new AuthError();
+  if(force || Date.now() > dbx.token.exp){
+    if(!dbx.token.refresh){ saveToken(null); throw new AuthError(); }
+    let j;
+    try{ j = await tokenRequest({grant_type:"refresh_token", refresh_token:dbx.token.refresh}); }
+    catch(e){ saveToken(null); throw new AuthError(); }
+    saveToken({...dbx.token, access:j.access_token, exp:Date.now() + ((j.expires_in || 14400) - 60) * 1000});
+  }
+  return dbx.token.access;
+}
+async function dbxFetch(url, opts={}, retry=true){
+  const r = await fetch(url, {...opts, headers:{...(opts.headers || {}), Authorization:"Bearer " + await accessToken()}});
+  if(r.status === 401 && retry){ await accessToken(true); return dbxFetch(url, opts, false); }
+  return r;
+}
+async function apiError(r, fallback){
+  const t = await r.text(); let j = {}; try{ j = JSON.parse(t); }catch(e){}
+  const e = new Error(j.error_summary || fallback || `Dropbox svarede med fejl ${r.status}.`);
+  e.status = r.status; e.summary = j.error_summary || t || ""; return e;
+}
+async function rpc(endpoint, arg){
+  const r = await dbxFetch("https://api.dropboxapi.com/2/" + endpoint, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(arg ?? null)});
+  if(!r.ok) throw await apiError(r);
+  return r.json();
+}
+async function dbxDownload(path){
+  const r = await dbxFetch("https://content.dropboxapi.com/2/files/download", {method:"POST", headers:{"Dropbox-API-Arg":hdrJson({path})}});
+  if(!r.ok){ const e = await apiError(r); if(e.summary.includes("not_found")) e.message = "Filen findes ikke (længere) i Dropbox: " + path; else e.message = "Kunne ikke hente filen fra Dropbox."; throw e; }
+  const meta = JSON.parse(r.headers.get("Dropbox-API-Result") || "{}");
+  return {buf: await r.arrayBuffer(), meta};
+}
+async function dbxUpload(path, data, mode, autorename=false){
+  const r = await dbxFetch("https://content.dropboxapi.com/2/files/upload", {method:"POST", headers:{"Content-Type":"application/octet-stream", "Dropbox-API-Arg":hdrJson({path, mode, autorename, mute:true})}, body:data});
+  if(!r.ok) throw await apiError(r, "Kunne ikke gemme i Dropbox.");
+  return r.json();
+}
+
+/* Lokal sikkerhedskopi af ændringer, der endnu ikke er gemt i Dropbox */
+function scheduleBackup(){ clearTimeout(scheduleBackup.t); scheduleBackup.t = setTimeout(flushBackup, 800); }
+function flushBackup(){
+  clearTimeout(scheduleBackup.t);
+  if(!dirty || !workbookLoaded || !dbx.path) return;
+  try{ localStorage.setItem(LSK.backup, JSON.stringify({path:dbx.path, at:new Date().toISOString(), db, base})); }catch(e){}
+}
+function clearBackup(){ clearTimeout(scheduleBackup.t); localStorage.removeItem(LSK.backup); }
+
+/* Fletning: 3-vejs sammenligning af rækker (via ID) mellem det hentede, mit og det nyeste i Dropbox */
+const ID_KEYS = {sager:"SagsID",journalnumre:"JournalID",forhold:"ForholdID",artikler:"ArtikelID",dokumenter:"DokumentID",relationer:"RelationID",retsmoeder:"RetsmoedeID",personer:"PersonID",log:"LogID",faseforloeb:"FaseID"};
+const sameRow = (x,y) => { if(!x || !y) return false; for(const f of new Set([...Object.keys(x), ...Object.keys(y)])) if(String(x[f] ?? "") !== String(y[f] ?? "")) return false; return true; };
+function mergeDb(b, local, remote){
+  const out = {};
+  for(const k of Object.keys(SHEETS)){
+    const idk = ID_KEYS[k];
+    const key = r => idk && r[idk] ? "id:" + r[idk] : "row:" + JSON.stringify(Object.entries(r).filter(([,v]) => v !== "").sort());
+    const mapOf = arr => new Map((arr || []).map(r => [key(r), r]));
+    const B = mapOf(b && b[k]), L = mapOf(local[k]), R = mapOf(remote[k]);
+    const res = [];
+    for(const id of new Set([...R.keys(), ...L.keys()])){
+      const o = B.get(id), l = L.get(id), r = R.get(id);
+      let pick = null;
+      if(l && r){
+        const lc = !sameRow(l,o), rc = !sameRow(r,o);
+        if(lc && rc && o){ pick = {...r}; for(const f of new Set([...Object.keys(l), ...Object.keys(o)])) if(String(l[f] ?? "") !== String(o[f] ?? "")) pick[f] = l[f]; }
+        else pick = lc ? l : r;
+      }
+      else if(l) pick = sameRow(l,o) ? null : l;   // slettet i Dropbox – behold kun hvis jeg har ændret/oprettet den
+      else       pick = sameRow(r,o) ? null : r;   // slettet af mig – behold kun hvis en anden har ændret den
+      if(pick) res.push(pick);
+    }
+    out[k] = res;
+  }
+  return out;
+}
+const sameDb = (a,b) => JSON.stringify(a) === JSON.stringify(b);
+
+/* Login-/filvælger-skærm */
+function showGate(state, msg=""){
+  document.body.classList.add("locked"); $("gate").style.display = "flex";
+  const err = msg ? `<div class="gerr">${esc(msg)}</div>` : "";
+  const html = {
+    setup: `<h2>Forbind til Dropbox</h2><p>Indsæt App key fra din Dropbox-app (Dropbox App Console → din app → Settings).</p>${err}<input id="gKey" placeholder="App key" autocomplete="off"><div class="gactions"><span></span><button class="primary" onclick="saveAppKey()">Fortsæt</button></div><p class="gnote">Under “Redirect URIs” i Dropbox skal denne adresse stå:<br><code>${esc(REDIRECT_URI)}</code></p>`,
+    login: `<h2>Log ind</h2><p>Log ind med den Dropbox-konto, der har adgang til 112-databasen.</p>${err}<button class="primary big" onclick="dbxLogin()">Log ind med Dropbox</button>`,
+    loading: `<div class="center"><div class="spinner"></div><p>${esc(msg || "Henter …")}</p></div>`,
+    error: `<h2>Noget gik galt</h2>${err}<div class="gactions"><button class="ghost" onclick="dbxLogout()">Log ud</button><span style="display:flex;gap:8px"><button onclick="showPicker(dirOf(dbx.path))">Vælg en anden fil</button><button class="primary" onclick="boot()">Prøv igen</button></span></div>`
+  }[state];
+  $("gateBody").innerHTML = html;
+  if(state === "setup") $("gKey").focus();
+}
+function hideGate(){ $("gate").style.display = "none"; document.body.classList.remove("locked"); }
+function saveAppKey(){ const k = $("gKey").value.trim(); if(!k) return; localStorage.setItem(LSK.key, k); boot(); }
+
+async function showPicker(path=""){
+  showGate("loading", "Henter mapper fra Dropbox …");
+  let res;
+  try{ res = await rpc("files/list_folder", {path}); }
+  catch(e){ if(e.auth) return showGate("login", "Log ind igen."); if(path) return showPicker(""); return showGate("error", e.message); }
+  let entries = res.entries;
+  while(res.has_more){ res = await rpc("files/list_folder/continue", {cursor:res.cursor}); entries = entries.concat(res.entries); }
+  const byName = (a,b) => a.name.localeCompare(b.name, "da");
+  const folders = entries.filter(e => e[".tag"] === "folder").sort(byName);
+  const files = entries.filter(e => e[".tag"] === "file" && /\.xlsx$/i.test(e.name)).sort(byName);
+  const parts = path.split("/").filter(Boolean);
+  const crumbs = [`<a onclick="showPicker('')">Dropbox</a>`, ...parts.map((p,i) => `<a onclick="showPicker(${jq("/" + parts.slice(0,i+1).join("/"))})">${esc(p)}</a>`)].join(" / ");
+  $("gateBody").innerHTML = `<h2>Vælg databasen</h2><p>Find Excel-filen med 112-sagerne i din Dropbox – eller opret en ny.</p>
+    <div class="crumb">${crumbs}</div>
+    <div class="plist">
+      ${path ? `<div class="pitem up" onclick="showPicker(${jq(dirOf(path))})"><span class="nm">↑ Op</span></div>` : ""}
+      ${folders.map(f => `<div class="pitem" onclick="showPicker(${jq(f.path_display)})"><i class="ico"></i><span class="nm">${esc(f.name)}</span></div>`).join("")}
+      ${files.map(f => `<div class="pitem file" onclick="openFromPicker(${jq(f.path_display)})"><i class="ico"></i><span class="nm">${esc(f.name)}</span><span class="when">${esc(fmtTime(f.server_modified))}</span></div>`).join("")}
+      ${!folders.length && !files.length ? '<div class="pempty">Ingen mapper eller Excel-filer her.</div>' : ""}
+    </div>
+    <div class="gactions">${workbookLoaded ? '<button class="ghost" onclick="hideGate()">Annullér</button>' : '<button class="ghost" onclick="dbxLogout()">Log ud</button>'}<button onclick="createDatabase(${jq(path)})">Opret ny database her</button></div>`;
+}
+async function openFromPicker(path){
+  if(workbookLoaded && dirty && path.toLowerCase() !== dbx.path.toLowerCase()){
+    if(!confirm("Du har ændringer, der ikke er gemt i den nuværende database. Vil du skifte fil og kassere dem?")) return;
+    clearBackup(); dirty = false;
+  }
+  try{ await openDropboxFile(path); }
+  catch(e){ e.auth ? showGate("login", "Log ind igen.") : showGate("error", e.message); }
+}
+async function createDatabase(folder){
+  let name = prompt("Navn på den nye database:", "112-overblik database.xlsx");
+  if(!name) return;
+  name = name.trim().replace(/[\/\\]/g, "-"); if(!/\.xlsx$/i.test(name)) name += ".xlsx";
+  const empty = Object.fromEntries(Object.keys(SHEETS).map(k => [k, []]));
   try{
-    const handle = await idbGet("recentWorkbookHandle");
-    if(!handle){ alert("Der er ikke gemt adgang til en tidligere Excel-fil endnu. Åbn filen én gang først."); return; }
-    if(!await verifyFilePermission(handle, true)){ alert("Browseren gav ikke adgang til filen. Vælg den igen med “Åbn Excel-fil”."); return; }
-    fileHandle = handle;
-    const f = await handle.getFile();
-    fileName = f.name; recentFileName = f.name; localStorage.setItem("112overblik_recentFileName", f.name);
-    await readWorkbook(await f.arrayBuffer());
-    $("saveBtn").disabled = false;
-    $("fileStatus").innerHTML = `Genåbnet: <strong>${esc(f.name)}</strong>`;
-  }catch(e){ alert("Kunne ikke genåbne den seneste Excel-fil. Vælg den igen med “Åbn Excel-fil”."); }
+    showGate("loading", "Opretter " + name + " …");
+    const meta = await dbxUpload((folder || "") + "/" + name, XLSX.write(buildWorkbook(empty), {bookType:"xlsx", type:"array"}), "add", false);
+    await openDropboxFile(meta.path_display);
+  }catch(e){
+    if(e.auth) return showGate("login", "Log ind igen.");
+    alert(e.summary && e.summary.includes("conflict") ? "Der findes allerede en fil med det navn." : e.message);
+    showPicker(folder);
+  }
 }
-async function forgetRecentWorkbook(){
-  try{ await idbDelete("recentWorkbookHandle"); }catch(e){}
-  localStorage.removeItem("112overblik_recentFileName");
-  recentFileName = "";
-  $("fileStatus").innerHTML = "Glemt seneste Excel-fil. Vælg database med “Åbn Excel-fil”.";
-  resetExcelWarning();
+async function openDropboxFile(path){
+  showGate("loading", "Henter " + baseName(path) + " …");
+  const {buf, meta} = await dbxDownload(path);
+  const remote = parseWorkbook(buf);
+  let bk = null; try{ bk = JSON.parse(localStorage.getItem(LSK.backup) || "null"); }catch(e){}
+  dbx.path = meta.path_display || path; dbx.rev = meta.rev; dbx.lastSaved = meta.server_modified || "";
+  localStorage.setItem(LSK.path, dbx.path);
+  const restore = bk && bk.db && String(bk.path).toLowerCase() === dbx.path.toLowerCase() &&
+    confirm(`Der er ændringer fra ${fmtTime(bk.at)}, som ikke nåede at blive gemt i Dropbox.\n\nVil du gendanne dem? De bliver flettet sammen med den nyeste version.`);
+  applyDb(remote);
+  if(restore){ db = mergeDb(bk.base, bk.db, remote); setDirty(true); render(); renderDetail(); flash("Dine ikke-gemte ændringer er gendannet"); }
+  updateFileStatus();
+  hideGate();
 }
-async function openWorkbook(){
-  if(!confirmDiscard()) return;
-  if(!window.showOpenFilePicker){ $("fileInput").click(); return; }
+async function reloadFromDropbox(){
+  if(dirty){ await saveWorkbook(); return; }
   try{
-    [fileHandle] = await window.showOpenFilePicker({types:[{description:"Excel",accept:{"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":[".xlsx"]}}],multiple:false});
-    const f = await fileHandle.getFile();
-    fileName = f.name; recentFileName = f.name; localStorage.setItem("112overblik_recentFileName", f.name);
-    try{ await idbSet("recentWorkbookHandle", fileHandle); }catch(e){}
-    await readWorkbook(await f.arrayBuffer());
-    $("saveBtn").disabled = false;
-    $("fileStatus").innerHTML = `Åbnet: <strong>${esc(f.name)}</strong>`;
-  }catch(e){ if(e.name !== "AbortError") alert(e.message); }
+    const {buf, meta} = await dbxDownload(dbx.path);
+    dbx.rev = meta.rev; dbx.lastSaved = meta.server_modified || "";
+    applyDb(parseWorkbook(buf), true); updateFileStatus(); flash("Nyeste version er hentet");
+  }catch(e){ e.auth ? showGate("login", "Log ind igen.") : alert(e.message); }
 }
-async function importWorkbook(e){
-  const f = e.target.files[0]; if(!f) return;
-  fileHandle = null; fileName = f.name; recentFileName = f.name; localStorage.setItem("112overblik_recentFileName", f.name);
-  await readWorkbook(await f.arrayBuffer());
-  e.target.value = "";
-  $("saveBtn").disabled = false;
-  $("fileStatus").innerHTML = `Indlæst: <strong>${esc(f.name)}</strong><br><span class="notice">Din browser kan ikke gemme direkte – “Gem til Excel” downloader en opdateret fil.</span>`;
+async function checkRemote(){
+  if(!workbookLoaded || !dbx.path || dbx.saving || document.hidden) return;
+  try{
+    const m = await rpc("files/get_metadata", {path:dbx.path});
+    if(!m.rev || m.rev === dbx.rev) return;
+    if(dirty){
+      if(autoSave) saveWorkbook({silent:true});
+      else showBanner("En kollega har gemt ændringer", "Gem dine egne ændringer, så bliver de flettet sammen med deres.", "Gem og flet nu", () => saveWorkbook());
+      return;
+    }
+    const {buf, meta} = await dbxDownload(dbx.path);
+    if(dirty || dbx.saving) return;
+    dbx.rev = meta.rev; dbx.lastSaved = meta.server_modified || "";
+    applyDb(parseWorkbook(buf), true); updateFileStatus(); flash("Opdateret med nyeste ændringer fra Dropbox");
+  }catch(e){ if(e.auth) showGate("login", "Din Dropbox-adgang er udløbet. Log ind igen."); }
 }
-/* Excel-celler formateret som dato/tid bliver til ÅÅÅÅ-MM-DD / TT:MM */
+async function dbxLogout(){
+  if(dirty && !confirm("Du har ændringer, der ikke er gemt i Dropbox. Log ud alligevel?")) return;
+  try{ if(dbx.token) await rpc("auth/token/revoke"); }catch(e){}
+  saveToken(null); clearBackup(); dirty = false; location.reload();
+}
+function updateFileStatus(){
+  $("fileStatus").innerHTML = dbx.path ? `<strong>${esc(baseName(dbx.path))}</strong><br>${esc(dirOf(dbx.path) || "/")}${dbx.account ? `<br>Logget ind som ${esc(dbx.account)}` : ""}` : "";
+  setSaveState();
+}
+function setSaveState(){
+  const st = $("saveState");
+  if(st) st.innerHTML = dbx.saving ? "Gemmer i Dropbox …" : dirty ? '<span class="unsaved">● Ikke gemt endnu</span>' : dbx.lastSaved ? `Senest gemt ${esc(fmtTime(dbx.lastSaved))}` : "";
+  const el = $("dirtyState");
+  if(el){ el.textContent = dbx.saving ? "Gemmer …" : dirty ? "Ikke gemt" : "Gemt"; el.className = dirty || dbx.saving ? "dirty" : "saved"; }
+}
+function showBanner(title, text, btn, fn){
+  $("bannerTitle").textContent = title; $("bannerText").textContent = text;
+  $("bannerBtn").textContent = btn; $("bannerBtn").onclick = () => { hideBanner(); fn(); };
+  $("banner").classList.add("show");
+}
+function hideBanner(){ $("banner").classList.remove("show"); }
+
+async function boot(){
+  if(!appKey()) return showGate("setup");
+  try{
+    await handleRedirect();
+    if(!dbx.token) return showGate("login");
+    showGate("loading", "Forbinder til Dropbox …");
+    const acc = await rpc("users/get_current_account");
+    dbx.account = acc.name?.display_name || acc.email || "";
+    if(dbx.path){
+      try{ await openDropboxFile(dbx.path); return; }
+      catch(e){ if(e.auth) throw e; if(e.status !== 409) return showGate("error", e.message); }
+    }
+    await showPicker(dbx.path ? dirOf(dbx.path) : "");
+  }catch(e){
+    if(e.auth) return showGate("login", dbx.path ? "Du er logget ud. Log ind igen." : "");
+    showGate(dbx.token ? "error" : "login", e.message);
+  }
+}
 function normVal(v){
   if(v instanceof Date && !isNaN(v)){
     if(v.getFullYear() < 1901) return `${pad(v.getHours())}:${pad(v.getMinutes())}`;
@@ -552,22 +775,24 @@ function normVal(v){
   }
   return v;
 }
-async function readWorkbook(buf){
+function parseWorkbook(buf){
   const wb = XLSX.read(buf, {type:"array", cellDates:true});
   const get = n => XLSX.utils.sheet_to_json(wb.Sheets[n] || XLSX.utils.aoa_to_sheet([]), {defval:""})
                      .map(r => Object.fromEntries(Object.entries(r).map(([k,v]) => [k, normVal(v)])));
-  db = Object.fromEntries(Object.entries(SHEETS).map(([k,n]) => [k, get(n)]));
-  db.sager = db.sager.filter(s => s.SagsID).map(s => ({...s, Slettet: s.Slettet || "Nej", SlettetDato: s.SlettetDato || ""}));
-  currentId = db.sager.find(s => s.Slettet !== "Ja")?.SagsID || db.sager[0]?.SagsID || "";
-  workbookLoaded = true;
-  excelWarningDismissed = false;
-  localStorage.removeItem("112overblik_excelWarningDismissed");
-  selected.clear();
-  setDirty(false); updateExcelWarning(); render(); renderDetail();
+  const d = Object.fromEntries(Object.entries(SHEETS).map(([k,n]) => [k, get(n)]));
+  d.sager = d.sager.filter(s => s.SagsID).map(s => ({...s, Slettet: s.Slettet || "Nej", SlettetDato: s.SlettetDato || ""}));
+  return d;
 }
-function buildWorkbook(){
+function applyDb(d, keepSelection=false){
+  db = d; base = clone(d);
+  if(!keepSelection || !caseById(currentId)) currentId = db.sager.find(s => s.Slettet !== "Ja")?.SagsID || db.sager[0]?.SagsID || "";
+  if(!keepSelection) selected.clear();
+  workbookLoaded = true;
+  setDirty(false); hideBanner(); render(); renderDetail();
+}
+function buildWorkbook(src=db){
   const wb = XLSX.utils.book_new();
-  const sheets = {...Object.fromEntries(Object.entries(SHEETS).map(([k,n]) => [n, db[k]])), Dashboard:dashboardRows(), Lister:listRows()};
+  const sheets = {...Object.fromEntries(Object.entries(SHEETS).map(([k,n]) => [n, src[k]])), Dashboard:dashboardRows(), Lister:listRows()};
   for(const [name,data] of Object.entries(sheets)){
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.length ? data : [{}]), name);
   }
@@ -591,26 +816,43 @@ function dashboardRows(){
   ];
 }
 function listRows(){ const n = Math.max(...Object.values(lists).map(l => l.length)); return Array.from({length:n}, (_,i) => ({Sagstyper:lists.types[i]||"", Faser:lists.stages[i]||"", Status:lists.statuses[i]||"", Roller:lists.roles[i]||""})); }
-async function saveWorkbook(){
-  if(!workbookLoaded){
-    alert("Der er ikke indlæst en Excel-fil. Åbn den fælles Excel-database først, eller brug “Download kopi”.");
-    resetExcelWarning();
-    return;
+async function saveWorkbook({silent=false}={}){
+  if(!workbookLoaded || !dbx.path) return;
+  if(dbx.saving){ dbx.again = true; return; }
+  clearTimeout(autoTimer); dbx.saving = true; setSaveState();
+  let merged = false;
+  try{
+    for(let attempt = 0; attempt < 3; attempt++){
+      const snap = clone(db);
+      const out = XLSX.write(buildWorkbook(snap), {bookType:"xlsx", type:"array"});
+      try{
+        const meta = await dbxUpload(dbx.path, out, {".tag":"update", update:dbx.rev});
+        dbx.rev = meta.rev; dbx.lastSaved = meta.server_modified || new Date().toISOString(); base = snap;
+        dbx.saving = false;
+        if(sameDb(db, snap)) setDirty(false); else setSaveState();
+        if(merged){ render(); renderDetail(); flash("Gemt · ændringer fra en kollega er flettet ind"); }
+        else if(!silent) flash("Gemt i Dropbox");
+        return;
+      }catch(e){
+        if(e.auth || !String(e.summary || "").includes("conflict") || attempt === 2) throw e;
+        const {buf, meta} = await dbxDownload(dbx.path);   // en anden har gemt i mellemtiden → flet
+        db = mergeDb(base, db, parseWorkbook(buf)); dbx.rev = meta.rev; merged = true;
+      }
+    }
+  }catch(e){
+    dbx.saving = false; flushBackup();
+    if(merged){ render(); renderDetail(); }
+    if(e.auth) showGate("login", "Din Dropbox-adgang er udløbet. Log ind igen – dine ændringer bliver gendannet bagefter.");
+    else if(!silent) alert("Kunne ikke gemme i Dropbox: " + e.message + "\n\nDine ændringer er ikke tabt. Prøv igen om lidt, eller brug “Download kopi”.");
+    else showBanner("Automatisk gem fejlede", e.message + " – dine ændringer er gemt lokalt i browseren.", "Prøv igen", () => saveWorkbook());
+  }finally{
+    dbx.saving = false; setSaveState();
+    if(dbx.again){ dbx.again = false; if(dirty) saveWorkbook({silent:true}); }
   }
-  const out = XLSX.write(buildWorkbook(), {bookType:"xlsx", type:"array"});
-  if(fileHandle){
-    try{
-      const w = await fileHandle.createWritable(); await w.write(out); await w.close();
-      setDirty(false); $("fileStatus").innerHTML = `Gemt til <strong>${esc(fileName)}</strong> kl. ${new Date().toLocaleTimeString("da-DK",{hour:"2-digit",minute:"2-digit"})}`;
-      flash("Gemt i Excel"); return;
-    }catch(e){ alert("Gem direkte fejlede (er filen åben i Excel?). Downloader en kopi i stedet."); }
-  }
-  downloadBlob(new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), (fileName || "112_overblik_database.xlsx").replace(/\.xlsx$/i,"") + "_opdateret.xlsx");
-  setDirty(false);
 }
 function downloadWorkbook(){
   downloadBlob(new Blob([XLSX.write(buildWorkbook(),{bookType:"xlsx",type:"array"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),
-    (fileName || "112_overblik_database.xlsx").replace(/\.xlsx$/i,"") + "_kopi.xlsx");
+    (baseName(dbx.path) || "112_overblik_database.xlsx").replace(/\.xlsx$/i,"") + "_kopi.xlsx");
 }
 function downloadBlob(blob,name){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
 
@@ -641,7 +883,7 @@ function downloadIcs(){
 
 /* ---------- Sager ---------- */
 function newCase(){
-  if(!workbookLoaded && !confirm("Der er ikke indlæst en Excel-fil. Sagen gemmes ikke i den fælles database, før du åbner og gemmer til Excel. Fortsæt?")){ resetExcelWarning(); return; }
+  if(!workbookLoaded) return;
   const now = nowIso(), d = today();
   const c = {SagsID:uid("SAG"), Titel:"Ny 112-sag", Sagstype:"112-hændelse", Fase:"Tip / hændelse", Status:"Aktiv", Prioritet:"Mellem", Haendelsesdato:d, Slettet:"Nej", SlettetDato:"", Oprettet:now, Opdateret:now};
   db.sager.unshift(c);
@@ -735,7 +977,7 @@ function removeRow(sheet,key,id){
   touch(); setDirty(true); renderDetail(); render();
 }
 function addRow(sheet,row){ db[sheet].push(row); touch(); setDirty(true); renderDetail(); render(); }
-function touch(){ const c = current(); if(c) c.Opdateret = nowIso(); }
+function touch(){ const c = current(); if(c){ c.Opdateret = nowIso(); if(dbx.account) c.OpdateretAf = dbx.account; } }
 function setField(field, value){ const c = current(); if(!c) return; c[field] = value; touch(); setDirty(true); renderDetail(); render(); }
 function calcFrist(){
   const c = current(); if(!c) return;
@@ -943,16 +1185,6 @@ function toggleDetail(forceOpen=null){
   $("toggleDetailBtn").textContent = detailOpen ? "Luk sagsfane" : "Åbn sagsfane";
 }
 function saveOpenSections(){ localStorage.setItem("112overblik_openSections", JSON.stringify([...openSections])); }
-function updateExcelWarning(){
-  const box = $("excelWarning"), txt = $("excelWarningText");
-  if(workbookLoaded || excelWarningDismissed){ box.classList.remove("show"); return; }
-  txt.innerHTML = recentFileName
-    ? `Senest brugte fil: <strong>${esc(recentFileName)}</strong>. Klik “Genåbn seneste fil” eller vælg filen med “Åbn Excel-fil”, så data kan læses og gemmes korrekt.`
-    : `Åbn den fælles Excel-database, før du opretter eller redigerer sager. Ellers arbejder du kun i en tom midlertidig app-session.`;
-  box.classList.add("show");
-}
-function dismissExcelWarning(){ excelWarningDismissed = true; localStorage.setItem("112overblik_excelWarningDismissed","true"); updateExcelWarning(); }
-function resetExcelWarning(){ excelWarningDismissed = false; localStorage.removeItem("112overblik_excelWarningDismissed"); updateExcelWarning(); }
 
 function section(key,title,body,count=null){
   return `<details data-sec="${key}" ${openSections.has(key)?"open":""}><summary>${esc(title)}${count?`<span class="n">${count}</span>`:""}</summary><div class="sectionbody">${body}</div></details>`;
@@ -988,12 +1220,12 @@ function renderDetail(){
   const si = lists.stages.indexOf(c.Fase);
   box.innerHTML = `
     <div class="case-titlebar tr-${trackOf(c)}">
-      <div class="kicker"><i class="dot"></i>${esc(tracks.find(t => t.key === trackOf(c)).label)} · ${esc(c.Sagstype||"")}${c.Slettet==="Ja"?" · i papirkurven":""}</div>
+      <div class="kicker"><i class="dot"></i>${[tracks.find(t => t.key === trackOf(c)).label, c.Sagstype, c.Slettet==="Ja" ? "i papirkurven" : ""].filter(Boolean).map(esc).join(" · ")}</div>
       <h1 id="caseTitle">${esc(c.Titel||"Uden titel")}</h1>
       <div class="stagebar">${lists.stages.map((s,i) => `<button type="button" class="stage ${i===si?"on":i<si?"done":""}" title="Sæt fase: ${esc(s)}" onclick="pickPhase(${jq(s)})">${esc(s)}</button>`).join("")}</div>
       ${factsHtml(c)}
       <div class="followbar"><span>Opfølgning</span><input id="d_Paamindelse" type="date" value="${esc(c.Paamindelse ?? "")}"><button class="ghost small" onclick="setFollowup(7)">+1 uge</button><button class="ghost small" onclick="setFollowup(14)">+2 uger</button><button class="ghost small" onclick="setFollowup(30)">+1 md.</button></div>
-      <div class="savebar"><button class="small" onclick="markFollowedUp()" title="Registrér at du har fulgt op (fx ringet til politiet) og ryk næste opfølgning">✓ Fulgt op i dag</button><span id="dirtyState" class="${dirty?"dirty":"saved"}">${dirty?"Ikke gemt":"Gemt"}</span><div class="grow"></div><button class="ghost small" onclick="duplicateCase()">Kopiér</button>${c.Slettet==="Ja" ? '<button class="small" onclick="selected=new Set([currentId]);restoreSelected()">Gendan sag</button>' : ""}<button class="ghost small" onclick="toggleDetail(false)">Luk</button><button class="primary small" onclick="saveWorkbook()">Gem til Excel</button></div>
+      <div class="savebar"><button class="small" onclick="markFollowedUp()" title="Registrér at du har fulgt op (fx ringet til politiet) og ryk næste opfølgning">✓ Fulgt op i dag</button><span id="dirtyState" class="${dirty?"dirty":"saved"}">${dirty?"Ikke gemt":"Gemt"}</span><div class="grow"></div><button class="ghost small" onclick="duplicateCase()">Kopiér</button>${c.Slettet==="Ja" ? '<button class="small" onclick="selected=new Set([currentId]);restoreSelected()">Gendan sag</button>' : ""}<button class="ghost small" onclick="toggleDetail(false)">Luk</button><button class="primary small" onclick="saveWorkbook()">Gem</button></div>
     </div>
     ${section("tidslinje","Tidslinje",`<div id="tlBody">${timelineHtml(c)}</div>`)}
     ${section("haendelse","Hændelse",formIncident(c))}
@@ -1021,7 +1253,7 @@ function bindDetailInputs(){
     }
     el.addEventListener("input", () => {
       const c = current(); if(!c) return;
-      c[field] = el.value; c.Opdateret = nowIso(); setDirty(true);
+      c[field] = el.value; c.Opdateret = nowIso(); if(dbx.account) c.OpdateretAf = dbx.account; setDirty(true);
       if(field === "Titel") $("caseTitle").textContent = el.value || "Uden titel";
       render();
     });
@@ -1167,12 +1399,12 @@ function copyTpl(i){
 /* ---------- Start ---------- */
 function init(){
   toggleDetail(detailOpen);
-  if(recentFileName) $("fileStatus").innerHTML = `Seneste: <strong>${esc(recentFileName)}</strong>`;
-  updateExcelWarning();
   document.querySelectorAll(".nav button").forEach(b => b.onclick = () => setView(b.dataset.view));
-  $("openBtn").onclick = openWorkbook; $("reopenBtn").onclick = reopenRecentWorkbook; $("forgetRecentBtn").onclick = forgetRecentWorkbook;
-  $("fileInput").onchange = importWorkbook; $("saveBtn").onclick = saveWorkbook; $("downloadBtn").onclick = downloadWorkbook;
-  $("dismissExcelWarningBtn").onclick = dismissExcelWarning;
+  $("saveBtn").onclick = () => saveWorkbook(); $("reloadBtn").onclick = reloadFromDropbox;
+  $("pickBtn").onclick = () => showPicker(dirOf(dbx.path)); $("downloadBtn").onclick = downloadWorkbook; $("logoutBtn").onclick = dbxLogout;
+  $("autoSave").checked = autoSave;
+  $("autoSave").onchange = e => { autoSave = e.target.checked; localStorage.setItem(LSK.auto, autoSave); if(autoSave && dirty) saveWorkbook({silent:true}); };
+  $("bannerClose").onclick = hideBanner;
   $("newBtn").onclick = newCase;
   $("toggleDetailBtn").addEventListener("click", () => toggleDetail());
   $("search").oninput = render; $("sortBy").oninput = render;
@@ -1181,11 +1413,14 @@ function init(){
   $("deleteSelectedBtn").onclick = deleteSelected;
   $("restoreSelectedBtn").onclick = restoreSelected;
   document.addEventListener("keydown", e => { if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s"){ e.preventDefault(); saveWorkbook(); } });
-  window.addEventListener("beforeunload", e => { if(dirty){ e.preventDefault(); e.returnValue = ""; } });
+  window.addEventListener("beforeunload", e => { if(dirty){ flushBackup(); e.preventDefault(); e.returnValue = ""; } });
+  document.addEventListener("visibilitychange", () => { if(!document.hidden) checkRemote(); });
+  setInterval(checkRemote, 60000);
   // Tjek dato-skift ved midnat, så frister og "i dag" passer
   let lastDay = today();
   setInterval(() => { if(today() !== lastDay){ lastDay = today(); render(); renderDetail(); } }, 60000);
   render(); renderDetail();
+  boot();
 }
 init();
 </script>
