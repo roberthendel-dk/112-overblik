@@ -154,7 +154,8 @@ a:hover{text-decoration:underline}
 .phase em{font-style:normal;color:var(--faint);font-weight:500;margin-left:4px}
 .cfoot{display:flex;gap:10px;justify-content:space-between;align-items:flex-end;margin:10px 0 0 26px}
 .cfoot .badges{margin-top:0}
-.cfoot .actions{margin-top:0;flex:none}
+.cfoot .actions{margin-top:0;flex:none;align-items:center}
+.cardlink{font-size:12.5px;padding:5px 6px}
 .badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
 .badge{font-size:11.5px;font-weight:600;border-radius:6px;padding:2px 7px;background:var(--sunken);color:#504b45;white-space:nowrap;line-height:1.5}
 .badge.blue{background:var(--blue-soft);color:var(--blue)}
@@ -1409,6 +1410,7 @@ function card(c){
   const nr = nextCourt(c);
   const deleted = c.Slettet === "Ja";
   const dls = caseDeadlines(c).slice(0,2).map(dlBadge).join("");
+  const ak = caseDocWithLink(c, "Anklageskrift", c.TiltaleDato);
   const meta = [c.Sagstype, c.Sted, c.Haendelsesdato ? fmtDate(c.Haendelsesdato) + (c.Gerningstid ? " kl. " + c.Gerningstid : "") : "", c.PolitietsJournalnummer ? "J.nr. " + c.PolitietsJournalnummer : "", c.RettensSagsnummer ? "Ret: " + c.RettensSagsnummer : ""].filter(Boolean).map(esc).join(" · ");
   return `<article class="casecard tr-${trackOf(c)} ${c.SagsID===currentId?"active":""}">
     <div class="casehead">
@@ -1419,7 +1421,7 @@ function card(c){
     <div class="phase"><div class="progress">${lists.stages.map((s,i) => `<i class="${i<=si?"done":""}" title="${esc(s)}"></i>`).join("")}</div><span>${esc(c.Fase||"Ukendt fase")}</span></div>
     <div class="cfoot">
       <div class="badges">${isClosed(c) ? '<span class="badge green">Afsluttet</span>' : dls}${nr?`<span class="badge violet">${esc(nr.Type||"Retsmøde")} ${esc(fmtDate(nr.Dato))}${nr.Starttid?" kl. "+esc(nr.Starttid):""}</span>`:""}${["Ja","Surrogat"].includes(c.Varetaegt)&&!isClosed(c)?`<span class="badge red">Varetægt</span>`:""}${followBadge(c)}</div>
-      <div class="actions">${!deleted && c.Fase !== "Afsluttet" ? `<button class="ghost small" onclick="advancePhase(${jq(c.SagsID)})">Næste fase →</button>` : ""}<button class="small" onclick="openCase(${jq(c.SagsID)})">Åbn</button></div>
+      <div class="actions">${ak ? `<a class="cardlink" href="${esc(ak.URL)}" target="_blank" rel="noopener">Anklageskrift ↗</a>` : ""}${!deleted && c.Fase !== "Afsluttet" ? `<button class="ghost small" onclick="advancePhase(${jq(c.SagsID)})">Næste fase →</button>` : ""}<button class="small" onclick="openCase(${jq(c.SagsID)})">Åbn</button></div>
     </div>
   </article>`;
 }
