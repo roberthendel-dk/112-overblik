@@ -127,6 +127,10 @@ a:hover{text-decoration:underline}
 .agrow.late .tag{background:var(--red-soft);color:var(--red)}
 .gap{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 6px;border-top:1px solid var(--line);cursor:pointer}
 .gap:first-child{border-top:0}
+.futoggle{display:flex!important;align-items:center;gap:8px;margin:14px 0 0!important;font-size:13px;color:var(--ink)!important;font-weight:600!important;cursor:pointer}
+.futoggle input{width:auto;accent-color:var(--ink)}
+.futoggle span{color:var(--muted);font-weight:500}
+.gaplist{max-height:460px;overflow:auto;margin:0 -6px;padding:0 6px}
 .gap:hover{background:#faf9f6}
 .gap strong{font-weight:600}
 
@@ -516,7 +520,7 @@ function lastActivity(c){
   return ds[ds.length-1] || "";
 }
 function gaps(c){
-  if(isClosed(c) || c.Slettet === "Ja") return [];
+  if(isClosed(c) || c.Slettet === "Ja" || c.FoelgOp === "Nej") return [];
   const g = [], tr = trackOf(c);
   if(["police","court","decided"].includes(tr) && !c.PolitietsJournalnummer && !rows("journalnumre",c.SagsID).length) g.push("Mangler politiets journalnummer");
   if(["Tiltalt","Berammet","Hovedforhandling"].includes(c.Fase) && !nextCourt(c)) g.push("Intet kommende retsmøde registreret");
@@ -524,13 +528,25 @@ function gaps(c){
   if(c.Fase === "Afgjort" && !c.Ankefrist) g.push("Ankefrist ikke registreret");
   if(c.Sendt && !c.Frist && c.Sagstype === "Aktindsigt") g.push("Aktindsigt sendt uden frist");
   if(["incident","police"].includes(tr)){ const la = daysUntil(lastActivity(c)); if(la !== null && la < -30) g.push(`Intet nyt i ${-la} dage`); }
-  const art = rows("artikler", c.SagsID);
-  const charged = rows("personer", c.SagsID).some(p => ["Sigtet","Tiltalt"].includes(p.Rolle)) || lists.stages.indexOf(c.Fase) >= lists.stages.indexOf("Sigtet");
-  if(art.length && charged){
+  if(followUpCase(c)){
+    const art = rows("artikler", c.SagsID);
     const last = art.map(a => String(a.Publiceringsdato ?? "").slice(0,10)).filter(d => parseDate(d)).sort().pop();
-    g.push(`Skrevet om: ${art.length} ${art.length === 1 ? "artikel" : "artikler"}${last ? `, senest ${fmtDate(last)}` : ""}`);
+    g.push(art.length ? `Skrevet om: ${art.length} ${art.length === 1 ? "artikel" : "artikler"}${last ? `, senest ${fmtDate(last)}` : ""}` : "Markeret til opfølgning");
   }
   return g;
+}
+/* Sager der er skrevet om, hvor nogen er sigtet/tiltalt – bliver på "Følg op", indtil sagen er afsluttet */
+function qualifiesFollowUp(c){
+  const charged = rows("personer", c.SagsID).some(p => ["Sigtet","Tiltalt"].includes(p.Rolle)) || lists.stages.indexOf(c.Fase) >= lists.stages.indexOf("Anholdt / grundlovsforhør");
+  return charged && rows("artikler", c.SagsID).length > 0;
+}
+// FoelgOp: "Ja" = på listen (sat automatisk eller manuelt), "Nej" = fravalgt manuelt, tom = automatisk
+function followUpCase(c){ return !isClosed(c) && c.Slettet !== "Ja" && (c.FoelgOp === "Ja" || (c.FoelgOp !== "Nej" && qualifiesFollowUp(c))); }
+function setFollowFlag(on){ const c = current(); if(!c) return; c.FoelgOp = on ? "Ja" : "Nej"; touch(); setDirty(true); render(); renderDetail(); flash(on ? "Sagen er sat på Følg op" : "Sagen er fjernet fra Følg op"); }
+function markFollowUps(){
+  let changed = false;
+  db.sager.forEach(c => { if(!c.FoelgOp && !isClosed(c) && c.Slettet !== "Ja" && qualifiesFollowUp(c)){ c.FoelgOp = "Ja"; changed = true; } });
+  if(changed && workbookLoaded) setDirty(true);
 }
 
 /* ---------- Dropbox ---------- */
@@ -1461,11 +1477,11 @@ function agendaHtml(items){
   return html;
 }
 function gapsHtml(){
+  markFollowUps();
   const gl = activeCases().map(c => ({c, g:gaps(c)})).filter(x => x.g.length)
-    .sort((a,b) => (a.c.Prioritet==="Høj"?0:1) - (b.c.Prioritet==="Høj"?0:1) || b.g.length - a.g.length);
+    .sort((a,b) => (a.c.Prioritet==="Høj"?0:1) - (b.c.Prioritet==="Høj"?0:1) || (followUpCase(b.c)?1:0) - (followUpCase(a.c)?1:0) || b.g.length - a.g.length);
   if(!gl.length) return '<div class="empty">Ingen huller fundet.</div>';
-  return gl.slice(0,15).map(({c,g}) => `<div class="gap" onclick="openCase(${jq(c.SagsID)})"><div><strong>${esc(c.Titel||"Uden titel")}</strong><div class="meta">${g.map(esc).join(" · ")}</div></div><span class="badge">${esc(c.Fase||"")}</span></div>`).join("")
-    + (gl.length > 15 ? `<div class="notice" style="margin-top:8px">+ ${gl.length-15} sager mere</div>` : "");
+  return `<div class="gaplist">${gl.map(({c,g}) => `<div class="gap" onclick="openCase(${jq(c.SagsID)})"><div><strong>${esc(c.Titel||"Uden titel")}</strong><div class="meta">${g.map(esc).join(" · ")}</div></div><span class="badge">${esc(c.Fase||"")}</span></div>`).join("")}</div>`;
 }
 function boardHtml(){
   const act = activeCases();
@@ -1542,6 +1558,7 @@ function renderDetail(){
       <h1 id="caseTitle">${esc(c.Titel||"Uden titel")}</h1>
       <div class="stagebar">${lists.stages.map((s,i) => `<button type="button" class="stage ${i===si?"on":i<si?"done":""}" title="Sæt fase: ${esc(s)}" onclick="pickPhase(${jq(s)})">${esc(s)}</button>`).join("")}</div>
       ${factsHtml(c)}
+      ${isClosed(c) ? "" : `<label class="futoggle"><input type="checkbox" ${gaps(c).length ? "checked" : ""} onchange="setFollowFlag(this.checked)"> Følg op på dashboardet${c.FoelgOp ? "" : gaps(c).length ? " <span>(automatisk)</span>" : ""}</label>`}
       <div class="followbar"><span>Opfølgning</span><input id="d_Paamindelse" type="date" value="${esc(c.Paamindelse ?? "")}"><button class="ghost small" onclick="setFollowup(7)">+1 uge</button><button class="ghost small" onclick="setFollowup(14)">+2 uger</button><button class="ghost small" onclick="setFollowup(30)">+1 md.</button></div>
       <div class="savebar"><button class="small" onclick="markFollowedUp()" title="Registrér at du har fulgt op (fx ringet til politiet) og ryk næste opfølgning">✓ Fulgt op i dag</button><span id="dirtyState" class="${dirty?"dirty":"saved"}">${dirty?"Ikke gemt":"Gemt"}</span><div class="grow"></div><button class="ghost small" onclick="duplicateCase()">Kopiér</button>${c.Slettet==="Ja" ? '<button class="small" onclick="selected=new Set([currentId]);restoreSelected()">Gendan sag</button>' : ""}<button class="ghost small" onclick="toggleDetail(false)">Luk</button><button class="primary small" onclick="saveWorkbook()">Gem</button></div>
     </div>
