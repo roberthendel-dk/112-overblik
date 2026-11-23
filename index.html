@@ -511,7 +511,7 @@ function agendaItems(horizon){
   return out.sort((a,b) => a.date.localeCompare(b.date) || String(a.time ?? "").localeCompare(String(b.time ?? "")));
 }
 function lastActivity(c){
-  const ds = [...rows("log",c.SagsID).map(l => l.Dato), ...rows("faseforloeb",c.SagsID).map(f => f.Dato), c.Oprettet]
+  const ds = [...rows("log",c.SagsID).map(l => l.Dato), ...rows("faseforloeb",c.SagsID).map(f => f.Dato), ...rows("artikler",c.SagsID).map(a => a.Publiceringsdato), c.Oprettet]
     .map(x => String(x ?? "").slice(0,10)).filter(x => parseDate(x)).sort();
   return ds[ds.length-1] || "";
 }
@@ -524,6 +524,11 @@ function gaps(c){
   if(c.Fase === "Afgjort" && !c.Ankefrist) g.push("Ankefrist ikke registreret");
   if(c.Sendt && !c.Frist && c.Sagstype === "Aktindsigt") g.push("Aktindsigt sendt uden frist");
   if(["incident","police"].includes(tr)){ const la = daysUntil(lastActivity(c)); if(la !== null && la < -30) g.push(`Intet nyt i ${-la} dage`); }
+  const art = rows("artikler", c.SagsID);
+  if(art.length){
+    const last = art.map(a => String(a.Publiceringsdato ?? "").slice(0,10)).filter(d => parseDate(d)).sort().pop();
+    g.push(`Skrevet om: ${art.length} ${art.length === 1 ? "artikel" : "artikler"}${last ? `, senest ${fmtDate(last)}` : ""}`);
+  }
   return g;
 }
 
@@ -1476,7 +1481,7 @@ function dashboardHtml(){
   if(!db.sager.length) return `<div class="panel"><h2>Kom i gang</h2><div class="sub">Åbn din Excel-database i menuen til venstre, eller opret en ny 112-sag. Den nye sag starter i fasen “Tip / hændelse” og kan rykkes videre, efterhånden som den går fra politiet til retten.</div><button class="primary" onclick="newCase()">+ Ny 112-sag</button></div>`;
   return `<div class="split">
     <div class="panel"><h2>Næste 14 dage</h2><div class="sub">Retsmøder, frister og opfølgninger – inkl. overskredne</div>${agendaHtml(agendaItems(14))}</div>
-    <div class="panel"><h2>Følg op</h2><div class="sub">Huller i sagerne, som typisk kræver et opkald eller en mail</div>${gapsHtml()}</div>
+    <div class="panel"><h2>Følg op</h2><div class="sub">Sager, der er skrevet om, og huller, som typisk kræver et opkald eller en mail</div>${gapsHtml()}</div>
   </div>
   <div class="panel"><h2>Forløb</h2><div class="sub">Fra hændelse over politiet til retten. Klik på en sag for at åbne den, eller ryk den til næste fase.</div>${boardHtml()}</div>`;
 }
