@@ -477,7 +477,7 @@ function caseEvents(c){
   add(c.DomDato,"court","Dom",[c.Udfald,c.Straf].filter(Boolean).join(" · "));
   add(c.Sendt,"access","Aktindsigt sendt",c.Myndighed);
   [...hardDeadlines,["Paamindelse","Opfølgning"]].forEach(([f,l]) => add(c[f], f==="Paamindelse" ? "follow" : "deadline", l));
-  rows("faseforloeb",c.SagsID).forEach(r => add(r.Dato,"phase","Fase: "+r.Fase,r.Note));
+  rows("faseforloeb",c.SagsID).filter(r => !(r.Fase === "Tip / hændelse" && parseDate(c.Haendelsesdato))).forEach(r => add(r.Dato,"phase","Fase: "+r.Fase,r.Note));
   rows("retsmoeder",c.SagsID).forEach(r => add(r.Dato,"court",r.Type||"Retsmøde",[r.Ret,r.Sal?"sal "+r.Sal:"",r.Noter].filter(Boolean).join(" · "),r.Starttid));
   rows("log",c.SagsID).forEach(l => add(l.Dato,"log",l.Type||"Log",l.Tekst));
   rows("dokumenter",c.SagsID).forEach(d => add(d.Dato,"doc",d.Titel||d.Filnavn||d.Type||"Dokument",[d.Type,d.Status].filter(Boolean).join(" · ")));
@@ -1060,7 +1060,6 @@ function newCase(){
   const now = nowIso(), d = today();
   const c = {SagsID:uid("SAG"), Titel:"Ny 112-sag", Sagstype:"112-hændelse", Fase:"Tip / hændelse", Status:"Aktiv", Prioritet:"Mellem", Haendelsesdato:d, Slettet:"Nej", SlettetDato:"", Oprettet:now, Opdateret:now};
   db.sager.unshift(c);
-  db.faseforloeb.push({FaseID:uid("FASE"), SagsID:c.SagsID, Fase:"Tip / hændelse", Dato:d, Note:"Sag oprettet", Oprettet:now});
   currentId = c.SagsID; openSections.add("haendelse"); saveOpenSections();
   setDirty(true); toggleDetail(true); render(); renderDetail();
   const t = $("d_Titel"); if(t){ t.focus(); t.select(); }
