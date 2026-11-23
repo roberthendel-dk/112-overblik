@@ -202,6 +202,9 @@ details[open] summary{border-bottom:1px solid var(--line)}
 .item strong{font-weight:600}
 .item p{margin:6px 0;line-height:1.45}
 .item .badge{margin-left:4px}
+.item.editing{border-color:var(--blue);box-shadow:0 0 0 3px rgba(43,89,195,.12)}
+.item .actions{margin-top:6px}
+.editnote{margin-top:14px;padding:7px 10px;border-radius:8px;background:var(--blue-soft);color:var(--blue);font-size:12.5px;font-weight:600}
 .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .notice{font-size:12px;color:var(--muted);line-height:1.4;margin-top:8px}
 .subhead{font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 0;padding-top:12px;border-top:1px solid var(--line)}
@@ -1062,7 +1065,7 @@ function newCase(){
   setDirty(true); toggleDetail(true); render(); renderDetail();
   const t = $("d_Titel"); if(t){ t.focus(); t.select(); }
 }
-function openCase(id){ currentId = id; toggleDetail(true); render(); renderDetail(); }
+function openCase(id){ if(id !== currentId) editing = null; currentId = id; toggleDetail(true); render(); renderDetail(); }
 function duplicateCase(){
   const src = current(); if(!src) return;
   const now = nowIso();
@@ -1143,8 +1146,66 @@ function toggleSel(id, on){ on ? selected.add(id) : selected.delete(id); $("sele
 function removeRow(sheet,key,id){
   if(!confirm("Fjern denne række fra sagen?")) return;
   db[sheet] = db[sheet].filter(r => r[key] !== id);
+  if(editing && editing.sheet === sheet && editing.id === id) editing = null;
   if(sheet === "faseforloeb") syncPhase(currentId);
   touch(); setDirty(true); renderDetail(); render();
+}
+const ROWFORMS = {
+  journalnumre:{key:"JournalID", prefix:"JNR", sec:"journal", label:"journalnummer", fields:[["Journalnummer","jv"],["Type","jt"],["Note","jn"]]},
+  personer:{key:"PersonID", prefix:"PERS", sec:"personer", label:"person", fields:[["Navn","pn"],["Rolle","pr"],["Kontakt","pc"],["Myndighed","pa"],["Noter","pno"]], required:"Navn", reqMsg:"Skriv personens navn."},
+  forhold:{key:"ForholdID", prefix:"FORHOLD", sec:"forhold", label:"forhold", fields:[["ForholdNr","fn"],["Status","fs"],["Lovgrundlag","fl"],["DatoPeriode","fd"],["Beskrivelse","fb"],["Noter","fno"]]},
+  dokumenter:{key:"DokumentID", prefix:"DOK", sec:"dokumenter", label:"dokument", fields:[["Type","dt"],["Status","ds"],["Titel","dti"],["Filnavn","df"],["Dato","dd"],["URL","du"],["Noter","dn"]]},
+  artikler:{key:"ArtikelID", prefix:"ART", sec:"artikler", label:"artikel", fields:[["Type","at"],["Medie","am"],["Titel","ati"],["URL","au"],["Publiceringsdato","ad"],["Status","as"],["Noter","an"]]},
+  retsmoeder:{key:"RetsmoedeID", prefix:"RET", sec:"retsmoeder", label:"retsmøde", fields:[["Dato","rd"],["Starttid","rs"],["Ret","rr"],["Sal","rsal"],["Type","rt"],["Dommer","rdom"],["Noter","rn"]], required:"Dato", reqMsg:"Vælg en dato for retsmødet."},
+  faseforloeb:{key:"FaseID", prefix:"FASE", sec:"faser", label:"faseskift", fields:[["Fase","ph_f"],["Dato","ph_d"],["Note","ph_n"]], required:"Dato", reqMsg:"Vælg en dato for faseskiftet."}
+};
+let editing = null;   // {sheet, id} når en række redigeres
+function submitRow(sheet){
+  const def = ROWFORMS[sheet];
+  const vals = Object.fromEntries(def.fields.map(([f,id]) => [f, $(id).value.trim()]));
+  if(def.required && !vals[def.required]){ alert(def.reqMsg); $(def.fields.find(([f]) => f === def.required)[1]).focus(); return; }
+  if(!def.fields.some(([f]) => vals[f]) ){ return; }
+  if(editing && editing.sheet === sheet){
+    const r = db[sheet].find(x => x[def.key] === editing.id);
+    if(r) Object.assign(r, vals, {Opdateret:nowIso()});
+    editing = null;
+    flash(cap(def.label) + " opdateret");
+  } else {
+    db[sheet].push({[def.key]:uid(def.prefix), SagsID:currentId, ...vals, Oprettet:nowIso()});
+  }
+  if(sheet === "faseforloeb") syncPhase(currentId);
+  touch(); setDirty(true); renderDetail(); render();
+}
+function editRow(sheet, id){
+  editing = {sheet, id};
+  openSections.add(ROWFORMS[sheet].sec); saveOpenSections();
+  renderDetail();
+  const first = $(ROWFORMS[sheet].fields[0][1]);
+  if(first){ first.scrollIntoView({block:"center", behavior:"smooth"}); first.focus({preventScroll:true}); }
+}
+function cancelEdit(){ editing = null; renderDetail(); }
+function applyEditState(){
+  if(!editing) return;
+  const def = ROWFORMS[editing.sheet];
+  const r = (db[editing.sheet] || []).find(x => x[def.key] === editing.id && x.SagsID === currentId);
+  if(!r){ editing = null; return; }
+  def.fields.forEach(([f,id]) => {
+    const el = $(id); if(!el) return;
+    const v = r[f] ?? "";
+    if(el.tagName === "SELECT" && v !== "" && ![...el.options].some(o => o.value === String(v))) el.add(new Option(v, v), 0);
+    el.value = v;
+  });
+  const btn = $("btn_" + editing.sheet);
+  if(btn){
+    btn.textContent = "Gem ændringer";
+    const c = document.createElement("button"); c.className = "ghost small"; c.textContent = "Annullér"; c.style.marginLeft = "6px"; c.onclick = cancelEdit;
+    btn.after(c);
+    const h = document.createElement("div"); h.className = "editnote"; h.textContent = "Redigerer " + def.label + " – ret felterne og tryk “Gem ændringer”";
+    const firstField = $(def.fields[0][1]); const anchor = firstField && (firstField.closest(".row") || firstField.closest(".field"));
+    if(anchor) anchor.before(h);
+  }
+  const b = document.querySelector(`[data-edit="${CSS.escape(editing.sheet + ":" + editing.id)}"]`);
+  if(b) b.closest(".item")?.classList.add("editing");
 }
 function addRow(sheet,row){ db[sheet].push(row); touch(); setDirty(true); renderDetail(); render(); }
 function touch(){ const c = current(); if(c){ c.Opdateret = nowIso(); if(dbx.account) c.OpdateretAf = dbx.account; } }
@@ -1412,6 +1473,8 @@ function renderDetail(){
     ${section("artikler","Artikler",listArticles()+formArticle(),rows("artikler").length)}
   `;
   bindDetailInputs();
+  if(lastDetailId !== currentId) editing = null;
+  applyEditState();
   box.scrollTop = keep; lastDetailId = currentId;
 }
 function bindDetailInputs(){
@@ -1476,29 +1539,29 @@ function formResearch(c){ return `${textarea("d_Hypotese","Hypotese / mulig hist
 
 function listPhases(){
   const r = rows("faseforloeb").slice().sort((a,b) => String(a.Dato).localeCompare(String(b.Dato)));
-  return r.map(f => `<div class="item"><strong>${esc(f.Fase)}</strong> <span class="badge">${esc(f.Dato ? fmtDate(f.Dato) : "uden dato")}</span>${f.Note?`<p>${esc(f.Note)}</p>`:""}<div class="actions"><button class="ghost small" onclick="removeRow('faseforloeb','FaseID',${jq(f.FaseID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen faseskift registreret endnu.</div>';
+  return r.map(f => `<div class="item"><strong>${esc(f.Fase)}</strong> <span class="badge">${esc(f.Dato ? fmtDate(f.Dato) : "uden dato")}</span>${f.Note?`<p>${esc(f.Note)}</p>`:""}<div class="actions"><button class="ghost small" data-edit="faseforloeb:${esc(f.FaseID)}" onclick="editRow('faseforloeb',${jq(f.FaseID)})">Rediger</button><button class="ghost small" onclick="removeRow('faseforloeb','FaseID',${jq(f.FaseID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen faseskift registreret endnu.</div>';
 }
 function formPhase(){
   const c = current(), si = lists.stages.indexOf(c.Fase);
   const next = lists.stages[Math.min(si+1, lists.stages.length-1)];
-  return `<div class="row">${select("ph_f","Fase",next,lists.stages)}${input("ph_d","Dato",today(),"date")}</div>${input("ph_n","Note (fx døgnrapport, pressemeddelelse, retslister)","")}<div class="actions"><button class="primary small" onclick="addPhaseFromForm()">Registrér fase</button></div><div class="notice">Sagens aktuelle fase følger altid det seneste faseskift – du kan også efterregistrere gamle faser.</div>`;
+  return `<div class="row">${select("ph_f","Fase",next,lists.stages)}${input("ph_d","Dato",today(),"date")}</div>${input("ph_n","Note (fx døgnrapport, pressemeddelelse, retslister)","")}<div class="actions"><button class="primary small" id="btn_faseforloeb" onclick="submitRow('faseforloeb')">Registrér fase</button></div><div class="notice">Sagens aktuelle fase følger altid det seneste faseskift – du kan også efterregistrere gamle faser.</div>`;
 }
-function listJournals(){ return rows("journalnumre").map(j => `<div class="item"><strong>${esc(j.Journalnummer)}</strong> <span class="badge blue">${esc(j.Type)}</span><p>${esc(j.Note||"")}</p><button class="ghost small" onclick="removeRow('journalnumre','JournalID',${jq(j.JournalID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen ekstra journalnumre.</div>'; }
-function formJournal(){ return `<div class="row">${input("jv","Journalnummer","")}${select("jt","Type","Politiets journalnummer",["Politiets journalnummer","Anklageskrift","Rettens sagsnummer","Ankenummer","Kommunalt journalnr.","Andet"])}</div>${textarea("jn","Note","")}<button class="primary small" onclick="addRow('journalnumre',{JournalID:uid('JNR'),SagsID:currentId,Journalnummer:$('jv').value,Type:$('jt').value,Note:$('jn').value,Oprettet:nowIso()})">Tilføj journalnummer</button>`; }
-function listPeople(){ return rows("personer").map(p => `<div class="item"><strong>${esc(p.Navn)}</strong> <span class="badge blue">${esc(p.Rolle)}</span>${p.Kontakt?`<div class="meta">${esc(p.Kontakt)}</div>`:""}${p.Myndighed?`<div class="meta">${esc(p.Myndighedsrelation||"Myndighed")}: ${esc(p.Myndighed)}</div>`:""}<p>${esc(p.Noter||"")}</p><button class="ghost small" onclick="removeRow('personer','PersonID',${jq(p.PersonID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen personer.</div>'; }
-function formPerson(){ return `<div class="row">${input("pn","Navn","")}${select("pr","Rolle","Mistænkt",lists.roles)}</div><div class="row">${input("pc","Kontakt","")}${input("pa","Myndighed / kontor","")}</div>${textarea("pno","Noter","")}<button class="primary small" onclick="addRow('personer',{PersonID:uid('PERS'),SagsID:currentId,Navn:$('pn').value,Rolle:$('pr').value,Kontakt:$('pc').value,Myndighed:$('pa').value,Noter:$('pno').value,Oprettet:nowIso()})">Tilføj person</button>`; }
-function listCharges(){ return rows("forhold").map(f => `<div class="item"><strong>Forhold ${esc(f.ForholdNr)}</strong> <span class="badge blue">${esc(f.Status)}</span><div class="meta">${esc(f.Lovgrundlag||"")}${f.DatoPeriode?" · "+esc(f.DatoPeriode):""}</div><p>${esc(f.Beskrivelse||"")}</p><button class="ghost small" onclick="removeRow('forhold','ForholdID',${jq(f.ForholdID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen forhold.</div>'; }
-function formCharge(){ return `<div class="row">${input("fn","Forhold nr.","")}${select("fs","Status","Rejst i anklageskrift",["Rejst i anklageskrift","Sigtet for","Efterforskes","Frafaldet","Domfældt","Frifundet","Ukendt"])}</div><div class="row">${input("fl","Lovgrundlag","")}${input("fd","Dato / periode","")}</div>${textarea("fb","Beskrivelse","")}${textarea("fno","Noter","")}<button class="primary small" onclick="addRow('forhold',{ForholdID:uid('FORHOLD'),SagsID:currentId,ForholdNr:$('fn').value,Status:$('fs').value,Lovgrundlag:$('fl').value,DatoPeriode:$('fd').value,Beskrivelse:$('fb').value,Noter:$('fno').value,Oprettet:nowIso()})">Tilføj forhold</button>`; }
-function listDocuments(){ return rows("dokumenter").map(d => `<div class="item"><strong>${esc(d.Titel||d.Filnavn||"Dokument")}</strong> <span class="badge blue">${esc(d.Type)}</span><div class="meta">${esc(d.Status||"")}${d.Dato?" · "+esc(fmtDate(d.Dato)):""}</div>${d.URL?`<p><a href="${esc(d.URL)}" target="_blank" rel="noopener">🔗 Link til dokument</a></p>`:""}<p>${esc(d.Noter||"")}</p><button class="ghost small" onclick="removeRow('dokumenter','DokumentID',${jq(d.DokumentID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen dokumenter.</div>'; }
-function formDocument(){ return `<div class="row">${select("dt","Dokumenttype","Aktindsigt",["Aktindsigt","Døgnrapport","Pressemeddelelse","Anklageskrift","Retsbog","Retsliste","Dom","Billede","Mail","Andet"])}${select("ds","Status","Mangler",["Mangler","Bestilt","Modtaget","Gennemgået","Brugt i artikel","Afvist"])}</div>${input("dti","Titel","")}<div class="row">${input("df","Filnavn","")}${input("dd","Dato","","date")}</div>${input("du","OneDrive/SharePoint-link","")}${textarea("dn","Noter","")}<button class="primary small" onclick="addRow('dokumenter',{DokumentID:uid('DOK'),SagsID:currentId,Type:$('dt').value,Status:$('ds').value,Titel:$('dti').value,Filnavn:$('df').value,Dato:$('dd').value,URL:$('du').value,Noter:$('dn').value,Oprettet:nowIso()})">Tilføj dokument</button>`; }
-function listArticles(){ return rows("artikler").map(a => `<div class="item"><strong>${esc(a.Titel||"Artikel")}</strong> <span class="badge blue">${esc(a.Type)}</span><div class="meta">${esc(a.Medie||"")}${a.Publiceringsdato?" · "+esc(fmtDate(a.Publiceringsdato)):""}</div>${a.URL?`<p><a href="${esc(a.URL)}" target="_blank" rel="noopener">📰 Åbn artikel</a></p>`:""}<p>${esc(a.Noter||"")}</p><button class="ghost small" onclick="removeRow('artikler','ArtikelID',${jq(a.ArtikelID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen artikler.</div>'; }
-function formArticle(){ return `<div class="row">${select("at","Artikeltype","SN",["SN","Eksternt medie"])}${input("am","Medie / sektion","")}</div>${input("ati","Rubrik / titel","")}${input("au","URL","")}<div class="row">${input("ad","Publiceringsdato","","date")}${select("as","Status","Publiceret",["Publiceret","Udkast","Opfølgning","Baggrund","Andet"])}</div>${textarea("an","Noter","")}<button class="primary small" onclick="addRow('artikler',{ArtikelID:uid('ART'),SagsID:currentId,Type:$('at').value,Medie:$('am').value,Titel:$('ati').value,URL:$('au').value,Publiceringsdato:$('ad').value,Status:$('as').value,Noter:$('an').value,Oprettet:nowIso()})">Tilføj artikel</button>`; }
+function listJournals(){ return rows("journalnumre").map(j => `<div class="item"><strong>${esc(j.Journalnummer)}</strong> <span class="badge blue">${esc(j.Type)}</span><p>${esc(j.Note||"")}</p><div class="actions"><button class="ghost small" data-edit="journalnumre:${esc(j.JournalID)}" onclick="editRow('journalnumre',${jq(j.JournalID)})">Rediger</button><button class="ghost small" onclick="removeRow('journalnumre','JournalID',${jq(j.JournalID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen ekstra journalnumre.</div>'; }
+function formJournal(){ return `<div class="row">${input("jv","Journalnummer","")}${select("jt","Type","Politiets journalnummer",["Politiets journalnummer","Anklageskrift","Rettens sagsnummer","Ankenummer","Kommunalt journalnr.","Andet"])}</div>${textarea("jn","Note","")}<button class="primary small" id="btn_journalnumre" onclick="submitRow('journalnumre')">Tilføj journalnummer</button>`; }
+function listPeople(){ return rows("personer").map(p => `<div class="item"><strong>${esc(p.Navn)}</strong> <span class="badge blue">${esc(p.Rolle)}</span>${p.Kontakt?`<div class="meta">${esc(p.Kontakt)}</div>`:""}${p.Myndighed?`<div class="meta">${esc(p.Myndighedsrelation||"Myndighed")}: ${esc(p.Myndighed)}</div>`:""}<p>${esc(p.Noter||"")}</p><div class="actions"><button class="ghost small" data-edit="personer:${esc(p.PersonID)}" onclick="editRow('personer',${jq(p.PersonID)})">Rediger</button><button class="ghost small" onclick="removeRow('personer','PersonID',${jq(p.PersonID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen personer.</div>'; }
+function formPerson(){ return `<div class="row">${input("pn","Navn","")}${select("pr","Rolle","Mistænkt",lists.roles)}</div><div class="row">${input("pc","Kontakt","")}${input("pa","Myndighed / kontor","")}</div>${textarea("pno","Noter","")}<button class="primary small" id="btn_personer" onclick="submitRow('personer')">Tilføj person</button>`; }
+function listCharges(){ return rows("forhold").map(f => `<div class="item"><strong>Forhold ${esc(f.ForholdNr)}</strong> <span class="badge blue">${esc(f.Status)}</span><div class="meta">${esc(f.Lovgrundlag||"")}${f.DatoPeriode?" · "+esc(f.DatoPeriode):""}</div><p>${esc(f.Beskrivelse||"")}</p><button class="ghost small" data-edit="forhold:${esc(f.ForholdID)}" onclick="editRow('forhold',${jq(f.ForholdID)})">Rediger</button><button class="ghost small" onclick="removeRow('forhold','ForholdID',${jq(f.ForholdID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen forhold.</div>'; }
+function formCharge(){ return `<div class="row">${input("fn","Forhold nr.","")}${select("fs","Status","Rejst i anklageskrift",["Rejst i anklageskrift","Sigtet for","Efterforskes","Frafaldet","Domfældt","Frifundet","Ukendt"])}</div><div class="row">${input("fl","Lovgrundlag","")}${input("fd","Dato / periode","")}</div>${textarea("fb","Beskrivelse","")}${textarea("fno","Noter","")}<button class="primary small" id="btn_forhold" onclick="submitRow('forhold')">Tilføj forhold</button>`; }
+function listDocuments(){ return rows("dokumenter").map(d => `<div class="item"><strong>${esc(d.Titel||d.Filnavn||"Dokument")}</strong> <span class="badge blue">${esc(d.Type)}</span><div class="meta">${esc(d.Status||"")}${d.Dato?" · "+esc(fmtDate(d.Dato)):""}</div>${d.URL?`<p><a href="${esc(d.URL)}" target="_blank" rel="noopener">🔗 Link til dokument</a></p>`:""}<p>${esc(d.Noter||"")}</p><div class="actions"><button class="ghost small" data-edit="dokumenter:${esc(d.DokumentID)}" onclick="editRow('dokumenter',${jq(d.DokumentID)})">Rediger</button><button class="ghost small" onclick="removeRow('dokumenter','DokumentID',${jq(d.DokumentID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen dokumenter.</div>'; }
+function formDocument(){ return `<div class="row">${select("dt","Dokumenttype","Aktindsigt",["Aktindsigt","Døgnrapport","Pressemeddelelse","Anklageskrift","Retsbog","Retsliste","Dom","Billede","Mail","Andet"])}${select("ds","Status","Mangler",["Mangler","Bestilt","Modtaget","Gennemgået","Brugt i artikel","Afvist"])}</div>${input("dti","Titel","")}<div class="row">${input("df","Filnavn","")}${input("dd","Dato","","date")}</div>${input("du","OneDrive/SharePoint-link","")}${textarea("dn","Noter","")}<button class="primary small" id="btn_dokumenter" onclick="submitRow('dokumenter')">Tilføj dokument</button>`; }
+function listArticles(){ return rows("artikler").map(a => `<div class="item"><strong>${esc(a.Titel||"Artikel")}</strong> <span class="badge blue">${esc(a.Type)}</span><div class="meta">${esc(a.Medie||"")}${a.Publiceringsdato?" · "+esc(fmtDate(a.Publiceringsdato)):""}</div>${a.URL?`<p><a href="${esc(a.URL)}" target="_blank" rel="noopener">📰 Åbn artikel</a></p>`:""}<p>${esc(a.Noter||"")}</p><div class="actions"><button class="ghost small" data-edit="artikler:${esc(a.ArtikelID)}" onclick="editRow('artikler',${jq(a.ArtikelID)})">Rediger</button><button class="ghost small" onclick="removeRow('artikler','ArtikelID',${jq(a.ArtikelID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen artikler.</div>'; }
+function formArticle(){ return `<div class="row">${select("at","Artikeltype","SN",["SN","Eksternt medie"])}${input("am","Medie / sektion","")}</div>${input("ati","Rubrik / titel","")}${input("au","URL","")}<div class="row">${input("ad","Publiceringsdato","","date")}${select("as","Status","Publiceret",["Publiceret","Udkast","Opfølgning","Baggrund","Andet"])}</div>${textarea("an","Noter","")}<button class="primary small" id="btn_artikler" onclick="submitRow('artikler')">Tilføj artikel</button>`; }
 function listCourt(){
   const t = today();
   return rows("retsmoeder").slice().sort((a,b) => String(a.Dato).localeCompare(String(b.Dato)))
-    .map(r => `<div class="item"><strong>${esc(r.Dato?fmtDate(r.Dato):"Retsmøde")}${r.Starttid?" kl. "+esc(r.Starttid):""}</strong> <span class="badge ${String(r.Dato)>=t?"blue":""}">${esc(r.Type)}</span><div class="meta">${esc(r.Ret||"")}${r.Sal?" · sal "+esc(r.Sal):""}${r.Dommer?" · dommer "+esc(r.Dommer):""}</div><p>${esc(r.Noter||"")}</p><button class="ghost small" onclick="removeRow('retsmoeder','RetsmoedeID',${jq(r.RetsmoedeID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen retsmøder.</div>';
+    .map(r => `<div class="item"><strong>${esc(r.Dato?fmtDate(r.Dato):"Retsmøde")}${r.Starttid?" kl. "+esc(r.Starttid):""}</strong> <span class="badge ${String(r.Dato)>=t?"blue":""}">${esc(r.Type)}</span><div class="meta">${esc(r.Ret||"")}${r.Sal?" · sal "+esc(r.Sal):""}${r.Dommer?" · dommer "+esc(r.Dommer):""}</div><p>${esc(r.Noter||"")}</p><div class="actions"><button class="ghost small" data-edit="retsmoeder:${esc(r.RetsmoedeID)}" onclick="editRow('retsmoeder',${jq(r.RetsmoedeID)})">Rediger</button><button class="ghost small" onclick="removeRow('retsmoeder','RetsmoedeID',${jq(r.RetsmoedeID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen retsmøder.</div>';
 }
-function formCourt(){ const c = current(); return `<div class="row">${input("rd","Dato","","date")}${input("rs","Starttid","","time")}</div><div class="row">${input("rr","Ret",c.Ret||"")}${input("rsal","Sal","")}</div><div class="row">${select("rt","Type","Retsmøde",["Grundlovsforhør","Fristforlængelse","Retsmøde","Hovedforhandling","Domsafsigelse","Anke","Andet"])}${input("rdom","Dommer","")}</div>${textarea("rn","Noter","")}<button class="primary small" onclick="addCourtFromForm()">Tilføj retsmøde</button>`; }
+function formCourt(){ const c = current(); return `<div class="row">${input("rd","Dato","","date")}${input("rs","Starttid","","time")}</div><div class="row">${input("rr","Ret",c.Ret||"")}${input("rsal","Sal","")}</div><div class="row">${select("rt","Type","Retsmøde",["Grundlovsforhør","Fristforlængelse","Retsmøde","Hovedforhandling","Domsafsigelse","Anke","Andet"])}${input("rdom","Dommer","")}</div>${textarea("rn","Noter","")}<button class="primary small" id="btn_retsmoeder" onclick="submitRow('retsmoeder')">Tilføj retsmøde</button>`; }
 function addCourtFromForm(){
   if(!$("rd").value){ alert("Vælg en dato for retsmødet."); return; }
   addRow('retsmoeder',{RetsmoedeID:uid('RET'),SagsID:currentId,Dato:$('rd').value,Starttid:$('rs').value,Ret:$('rr').value,Sal:$('rsal').value,Type:$('rt').value,Dommer:$('rdom').value,Noter:$('rn').value,Oprettet:nowIso()});
