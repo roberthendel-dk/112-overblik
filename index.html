@@ -1435,7 +1435,7 @@ function mini(c){
   const ak = caseDocWithLink(c, "Anklageskrift", c.TiltaleDato);
   return `<div class="mini tr-${trackOf(c)} ${c.SagsID===currentId?"active":""}" onclick="openCase(${jq(c.SagsID)})">
     <div class="t">${esc(c.Titel||"Uden titel")}</div>
-    <div class="meta">${[c.Fase,c.Sted].filter(Boolean).map(esc).join(" · ")}</div>
+    <div class="meta">${[c.Fase, c.Sted, (n => n ? `${n} ${n === 1 ? "artikel" : "artikler"}` : "")(rows("artikler", c.SagsID).length)].filter(Boolean).map(esc).join(" · ")}</div>
     ${(dl||nr||c.Varetaegt==="Ja"||followBadge(c)) ? `<div class="badges">${dl?dlBadge(dl):""}${nr?`<span class="badge violet">Ret ${esc(fmtDate(nr.Dato))}</span>`:""}${["Ja","Surrogat"].includes(c.Varetaegt)&&!isClosed(c)?'<span class="badge red">Varetægt</span>':""}${followBadge(c)}</div>` : ""}
     ${ak ? `<a class="minilink" href="${esc(ak.URL)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Anklageskrift ↗</a>` : ""}
     ${!isClosed(c) ? `<button class="ghost small adv" onclick="event.stopPropagation();advancePhase(${jq(c.SagsID)})">Næste fase →</button>` : ""}
