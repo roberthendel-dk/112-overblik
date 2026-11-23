@@ -219,6 +219,7 @@ details[open] summary{border-bottom:1px solid var(--line)}
 .tl .d{font-size:11.5px;color:var(--muted)}
 .tl strong{font-weight:600}
 .tl .meta{margin-top:1px}
+.tllink{display:block;width:fit-content;margin-top:3px;font-size:12.5px}
 .nowline{position:relative;margin:2px 0 13px;font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.06em}
 .nowline:before{content:"";position:absolute;left:-25px;top:6px;width:14px;height:2px;background:var(--red);border-radius:1px}
 
@@ -368,6 +369,7 @@ const daysUntil = s => { const x = parseDate(s); if(!x) return null; return Math
 const addDays = (s,n) => { const d = parseDate(s); return d ? ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate()+n)) : ""; };
 const fmtDate = s => { const d = parseDate(s); return d ? d.toLocaleDateString("da-DK",{weekday:"short",day:"numeric",month:"short",year:"numeric"}) : String(s ?? ""); };
 const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+const safeUrl = u => /^https?:\/\//i.test(String(u ?? "").trim());
 const trunc = (s,n) => { s = String(s ?? ""); return s.length > n ? s.slice(0,n-1) + "…" : s; };
 
 /* Danske helligdage – bruges til at tælle arbejdsdage */
@@ -467,21 +469,26 @@ function followBadge(c){
 /* Alle daterede begivenheder i en sag – bruges til tidslinjen */
 function caseEvents(c){
   const ev = [];
-  const add = (date,kind,title,meta="",time="") => { const s = String(date ?? "").slice(0,10); if(parseDate(s)) ev.push({date:s,kind,title,meta,time}); };
+  const add = (date,kind,title,meta="",time="",link=null) => { const s = String(date ?? "").slice(0,10); if(parseDate(s)) ev.push({date:s,kind,title,meta,time,link}); };
+  // Dokument af en bestemt type – helst med samme dato som hændelsen – så tidslinjen kan linke til det
+  const docOf = (type, date) => { const d = rows("dokumenter",c.SagsID).filter(x => x.Type === type && safeUrl(x.URL)); return d.find(x => String(x.Dato).slice(0,10) === String(date ?? "").slice(0,10)) || d[0]; };
+  const tiltaleDoc = docOf("Anklageskrift", c.TiltaleDato), domDoc = docOf("Dom", c.DomDato);
   add(c.Haendelsesdato,"incident","Hændelse",[c.Sted,c.Beskrivelse].filter(Boolean).join(" · "),c.Gerningstid);
   add(c.KendtHosPolitiet,"police","Oprettet hos politiet",c.PolitietsJournalnummer ? "J.nr. "+c.PolitietsJournalnummer : "");
   add(c.AnholdtDato,"police","Anholdelse");
   add(c.Grundlovsforhoer,"court","Grundlovsforhør",c.Varetaegt && c.Varetaegt !== "Nej" ? "Varetægt: "+c.Varetaegt : "");
   add(c.SigtelsesDato,"police","Sigtelse",c.Sigtelse);
-  add(c.TiltaleDato,"court","Tiltale rejst",c.Anklagemyndighed);
-  add(c.DomDato,"court","Dom",[c.Udfald,c.Straf].filter(Boolean).join(" · "));
+  add(c.TiltaleDato,"court","Tiltale rejst",c.Anklagemyndighed,"",tiltaleDoc ? {url:tiltaleDoc.URL, label:"Åbn anklageskrift"} : null);
+  add(c.DomDato,"court","Dom",[c.Udfald,c.Straf].filter(Boolean).join(" · "),"",domDoc ? {url:domDoc.URL, label:"Åbn dommen"} : null);
   add(c.Sendt,"access","Aktindsigt sendt",c.Myndighed);
   [...hardDeadlines,["Paamindelse","Opfølgning"]].forEach(([f,l]) => add(c[f], f==="Paamindelse" ? "follow" : "deadline", l));
   rows("faseforloeb",c.SagsID).filter(r => !(r.Fase === "Tip / hændelse" && parseDate(c.Haendelsesdato)) && !(PHASE_FIELD[r.Fase] && parseDate(c[PHASE_FIELD[r.Fase]]))).forEach(r => add(r.Dato,"phase","Fase: "+r.Fase,r.Note));
   rows("retsmoeder",c.SagsID).forEach(r => add(r.Dato,"court",r.Type||"Retsmøde",[r.Ret,r.Sal?"sal "+r.Sal:"",r.Noter].filter(Boolean).join(" · "),r.Starttid));
   rows("log",c.SagsID).forEach(l => add(l.Dato,"log",l.Type||"Log",l.Tekst));
-  rows("dokumenter",c.SagsID).forEach(d => add(d.Dato,"doc",d.Titel||d.Filnavn||d.Type||"Dokument",[d.Type,d.Status].filter(Boolean).join(" · ")));
-  rows("artikler",c.SagsID).forEach(a => add(a.Publiceringsdato,"article",a.Titel||"Artikel",a.Medie));
+  rows("dokumenter",c.SagsID)
+    .filter(d => !((d === tiltaleDoc && parseDate(c.TiltaleDato) && String(d.Dato).slice(0,10) === String(c.TiltaleDato).slice(0,10)) || (d === domDoc && parseDate(c.DomDato) && String(d.Dato).slice(0,10) === String(c.DomDato).slice(0,10))))   // vises allerede under Tiltale rejst / Dom
+    .forEach(d => add(d.Dato,"doc",d.Titel||d.Filnavn||d.Type||"Dokument",[d.Type,d.Status].filter(Boolean).join(" · "),"",safeUrl(d.URL) ? {url:d.URL, label:"Åbn dokument"} : null));
+  rows("artikler",c.SagsID).forEach(a => add(a.Publiceringsdato,"article",a.Titel||"Artikel",a.Medie,"",safeUrl(a.URL) ? {url:a.URL, label:"Åbn artikel"} : null));
   return ev.sort((a,b) => a.date.localeCompare(b.date) || String(a.time ?? "").localeCompare(String(b.time ?? "")));
 }
 
@@ -1574,7 +1581,7 @@ function timelineHtml(c){
   const t = today(); let html = '<div class="timeline">', nowDone = false;
   ev.forEach(e => {
     if(!nowDone && e.date > t){ html += `<div class="nowline">I dag · ${esc(fmtDate(t))}</div>`; nowDone = true; }
-    html += `<div class="tl k-${e.kind} ${e.date>t?"future":""}"><div class="d">${esc(fmtDate(e.date))}${e.time?" · kl. "+esc(e.time):""}</div><strong>${esc(e.title)}</strong>${e.meta?`<div class="meta">${esc(trunc(e.meta,180))}</div>`:""}</div>`;
+    html += `<div class="tl k-${e.kind} ${e.date>t?"future":""}"><div class="d">${esc(fmtDate(e.date))}${e.time?" · kl. "+esc(e.time):""}</div><strong>${esc(e.title)}</strong>${e.meta?`<div class="meta">${esc(trunc(e.meta,180))}</div>`:""}${e.link?`<a class="tllink" href="${esc(e.link.url)}" target="_blank" rel="noopener">${esc(e.link.label)} ↗</a>`:""}</div>`;
   });
   if(!nowDone) html += `<div class="nowline">I dag · ${esc(fmtDate(t))}</div>`;
   return html + "</div>";
@@ -1637,9 +1644,9 @@ function listPeople(){ return rows("personer").map(p => `<div class="item"><stro
 function formPerson(){ return `<div class="row">${input("pn","Navn","")}${select("pr","Rolle","Mistænkt",lists.roles)}</div><div class="row">${input("pf","Fødselsdato","","date")}${input("pc","Kontakt","")}</div>${input("pa","Myndighed / kontor","")}${textarea("pno","Noter","")}<button class="primary small" id="btn_personer" onclick="submitRow('personer')">Tilføj person</button>`; }
 function listCharges(){ return rows("forhold").map(f => `<div class="item"><strong>Forhold ${esc(f.ForholdNr)}</strong> <span class="badge blue">${esc(f.Status)}</span><div class="meta">${esc(f.Lovgrundlag||"")}${f.DatoPeriode?" · "+esc(f.DatoPeriode):""}</div><p>${esc(f.Beskrivelse||"")}</p><button class="ghost small" data-edit="forhold:${esc(f.ForholdID)}" onclick="editRow('forhold',${jq(f.ForholdID)})">Rediger</button><button class="ghost small" onclick="removeRow('forhold','ForholdID',${jq(f.ForholdID)})">Fjern</button></div>`).join("") || '<div class="empty">Ingen forhold.</div>'; }
 function formCharge(){ return `<div class="row">${input("fn","Forhold nr.","")}${select("fs","Status","Rejst i anklageskrift",["Rejst i anklageskrift","Sigtet for","Efterforskes","Frafaldet","Domfældt","Frifundet","Ukendt"])}</div><div class="row">${input("fl","Lovgrundlag","")}${input("fd","Dato / periode","")}</div>${textarea("fb","Beskrivelse","")}${textarea("fno","Noter","")}<button class="primary small" id="btn_forhold" onclick="submitRow('forhold')">Tilføj forhold</button>`; }
-function listDocuments(){ return rows("dokumenter").map(d => `<div class="item"><strong>${esc(d.Titel||d.Filnavn||"Dokument")}</strong> <span class="badge blue">${esc(d.Type)}</span><div class="meta">${esc(d.Status||"")}${d.Dato?" · "+esc(fmtDate(d.Dato)):""}</div>${d.URL?`<p><a href="${esc(d.URL)}" target="_blank" rel="noopener">🔗 Link til dokument</a></p>`:""}<p>${esc(d.Noter||"")}</p><div class="actions"><button class="ghost small" data-edit="dokumenter:${esc(d.DokumentID)}" onclick="editRow('dokumenter',${jq(d.DokumentID)})">Rediger</button><button class="ghost small" onclick="removeRow('dokumenter','DokumentID',${jq(d.DokumentID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen dokumenter.</div>'; }
+function listDocuments(){ return rows("dokumenter").map(d => `<div class="item"><strong>${esc(d.Titel||d.Filnavn||"Dokument")}</strong> <span class="badge blue">${esc(d.Type)}</span><div class="meta">${esc(d.Status||"")}${d.Dato?" · "+esc(fmtDate(d.Dato)):""}</div>${safeUrl(d.URL)?`<p><a href="${esc(d.URL)}" target="_blank" rel="noopener">🔗 Link til dokument</a></p>`:""}<p>${esc(d.Noter||"")}</p><div class="actions"><button class="ghost small" data-edit="dokumenter:${esc(d.DokumentID)}" onclick="editRow('dokumenter',${jq(d.DokumentID)})">Rediger</button><button class="ghost small" onclick="removeRow('dokumenter','DokumentID',${jq(d.DokumentID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen dokumenter.</div>'; }
 function formDocument(){ return `<div class="row">${select("dt","Dokumenttype","Aktindsigt",["Aktindsigt","Døgnrapport","Pressemeddelelse","Anklageskrift","Retsbog","Retsliste","Dom","Billede","Mail","Andet"])}${select("ds","Status","Mangler",["Mangler","Bestilt","Modtaget","Gennemgået","Brugt i artikel","Afvist"])}</div>${input("dti","Titel","")}<div class="row">${input("df","Filnavn","")}${input("dd","Dato","","date")}</div>${input("du","OneDrive/SharePoint-link","")}${textarea("dn","Noter","")}<button class="primary small" id="btn_dokumenter" onclick="submitRow('dokumenter')">Tilføj dokument</button>`; }
-function listArticles(){ return rows("artikler").map(a => `<div class="item"><strong>${esc(a.Titel||"Artikel")}</strong> <span class="badge blue">${esc(a.Type)}</span><div class="meta">${esc(a.Medie||"")}${a.Publiceringsdato?" · "+esc(fmtDate(a.Publiceringsdato)):""}</div>${a.URL?`<p><a href="${esc(a.URL)}" target="_blank" rel="noopener">📰 Åbn artikel</a></p>`:""}<p>${esc(a.Noter||"")}</p><div class="actions"><button class="ghost small" data-edit="artikler:${esc(a.ArtikelID)}" onclick="editRow('artikler',${jq(a.ArtikelID)})">Rediger</button><button class="ghost small" onclick="removeRow('artikler','ArtikelID',${jq(a.ArtikelID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen artikler.</div>'; }
+function listArticles(){ return rows("artikler").map(a => `<div class="item"><strong>${esc(a.Titel||"Artikel")}</strong> <span class="badge blue">${esc(a.Type)}</span><div class="meta">${esc(a.Medie||"")}${a.Publiceringsdato?" · "+esc(fmtDate(a.Publiceringsdato)):""}</div>${safeUrl(a.URL)?`<p><a href="${esc(a.URL)}" target="_blank" rel="noopener">📰 Åbn artikel</a></p>`:""}<p>${esc(a.Noter||"")}</p><div class="actions"><button class="ghost small" data-edit="artikler:${esc(a.ArtikelID)}" onclick="editRow('artikler',${jq(a.ArtikelID)})">Rediger</button><button class="ghost small" onclick="removeRow('artikler','ArtikelID',${jq(a.ArtikelID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen artikler.</div>'; }
 function formArticle(){ return `<div class="row">${select("at","Artikeltype","SN",["SN","Eksternt medie"])}${input("am","Medie / sektion","")}</div>${input("ati","Rubrik / titel","")}${input("au","URL","")}<div class="row">${input("ad","Publiceringsdato","","date")}${select("as","Status","Publiceret",["Publiceret","Udkast","Opfølgning","Baggrund","Andet"])}</div>${textarea("an","Noter","")}<button class="primary small" id="btn_artikler" onclick="submitRow('artikler')">Tilføj artikel</button>`; }
 function listCourt(){
   const t = today();
