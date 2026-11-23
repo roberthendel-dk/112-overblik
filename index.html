@@ -525,7 +525,8 @@ function gaps(c){
   if(c.Sendt && !c.Frist && c.Sagstype === "Aktindsigt") g.push("Aktindsigt sendt uden frist");
   if(["incident","police"].includes(tr)){ const la = daysUntil(lastActivity(c)); if(la !== null && la < -30) g.push(`Intet nyt i ${-la} dage`); }
   const art = rows("artikler", c.SagsID);
-  if(art.length){
+  const charged = rows("personer", c.SagsID).some(p => ["Sigtet","Tiltalt"].includes(p.Rolle)) || lists.stages.indexOf(c.Fase) >= lists.stages.indexOf("Sigtet");
+  if(art.length && charged){
     const last = art.map(a => String(a.Publiceringsdato ?? "").slice(0,10)).filter(d => parseDate(d)).sort().pop();
     g.push(`Skrevet om: ${art.length} ${art.length === 1 ? "artikel" : "artikler"}${last ? `, senest ${fmtDate(last)}` : ""}`);
   }
