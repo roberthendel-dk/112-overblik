@@ -108,6 +108,7 @@ a:hover{text-decoration:underline}
 .mini .badges{margin-top:7px}
 .mini .badge{white-space:normal}
 .mini .adv{margin-top:6px;margin-left:-6px}
+.minilink{display:block;width:fit-content;margin-top:7px;font-size:12.5px}
 .colmore{margin:2px}
 
 /* Agenda */
@@ -471,7 +472,7 @@ function caseEvents(c){
   const ev = [];
   const add = (date,kind,title,meta="",time="",link=null) => { const s = String(date ?? "").slice(0,10); if(parseDate(s)) ev.push({date:s,kind,title,meta,time,link}); };
   // Dokument af en bestemt type – helst med samme dato som hændelsen – så tidslinjen kan linke til det
-  const docOf = (type, date) => { const d = rows("dokumenter",c.SagsID).filter(x => x.Type === type && safeUrl(x.URL)); return d.find(x => String(x.Dato).slice(0,10) === String(date ?? "").slice(0,10)) || d[0]; };
+  const docOf = (type, date) => caseDocWithLink(c, type, date);
   const tiltaleDoc = docOf("Anklageskrift", c.TiltaleDato), domDoc = docOf("Dom", c.DomDato);
   add(c.Haendelsesdato,"incident","Hændelse",[c.Sted,c.Beskrivelse].filter(Boolean).join(" · "),c.Gerningstid);
   add(c.KendtHosPolitiet,"police","Oprettet hos politiet",c.PolitietsJournalnummer ? "J.nr. "+c.PolitietsJournalnummer : "");
@@ -1422,12 +1423,19 @@ function card(c){
     </div>
   </article>`;
 }
+/* Dokument af en bestemt type med link – helst det med samme dato som fx tiltalen */
+function caseDocWithLink(c, type, date){
+  const d = rows("dokumenter", c.SagsID).filter(x => x.Type === type && safeUrl(x.URL));
+  return d.find(x => String(x.Dato ?? "").slice(0,10) === String(date ?? "").slice(0,10)) || d[0];
+}
 function mini(c){
   const dl = caseDeadlines(c)[0], nr = nextCourt(c);
+  const ak = caseDocWithLink(c, "Anklageskrift", c.TiltaleDato);
   return `<div class="mini tr-${trackOf(c)} ${c.SagsID===currentId?"active":""}" onclick="openCase(${jq(c.SagsID)})">
     <div class="t">${esc(c.Titel||"Uden titel")}</div>
     <div class="meta">${[c.Fase,c.Sted].filter(Boolean).map(esc).join(" · ")}</div>
     ${(dl||nr||c.Varetaegt==="Ja"||followBadge(c)) ? `<div class="badges">${dl?dlBadge(dl):""}${nr?`<span class="badge violet">Ret ${esc(fmtDate(nr.Dato))}</span>`:""}${["Ja","Surrogat"].includes(c.Varetaegt)&&!isClosed(c)?'<span class="badge red">Varetægt</span>':""}${followBadge(c)}</div>` : ""}
+    ${ak ? `<a class="minilink" href="${esc(ak.URL)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Anklageskrift ↗</a>` : ""}
     ${!isClosed(c) ? `<button class="ghost small adv" onclick="event.stopPropagation();advancePhase(${jq(c.SagsID)})">Næste fase →</button>` : ""}
   </div>`;
 }
