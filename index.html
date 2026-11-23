@@ -477,7 +477,7 @@ function caseEvents(c){
   add(c.DomDato,"court","Dom",[c.Udfald,c.Straf].filter(Boolean).join(" · "));
   add(c.Sendt,"access","Aktindsigt sendt",c.Myndighed);
   [...hardDeadlines,["Paamindelse","Opfølgning"]].forEach(([f,l]) => add(c[f], f==="Paamindelse" ? "follow" : "deadline", l));
-  rows("faseforloeb",c.SagsID).filter(r => !(r.Fase === "Tip / hændelse" && parseDate(c.Haendelsesdato))).forEach(r => add(r.Dato,"phase","Fase: "+r.Fase,r.Note));
+  rows("faseforloeb",c.SagsID).filter(r => !(r.Fase === "Tip / hændelse" && parseDate(c.Haendelsesdato)) && !(PHASE_FIELD[r.Fase] && parseDate(c[PHASE_FIELD[r.Fase]]))).forEach(r => add(r.Dato,"phase","Fase: "+r.Fase,r.Note));
   rows("retsmoeder",c.SagsID).forEach(r => add(r.Dato,"court",r.Type||"Retsmøde",[r.Ret,r.Sal?"sal "+r.Sal:"",r.Noter].filter(Boolean).join(" · "),r.Starttid));
   rows("log",c.SagsID).forEach(l => add(l.Dato,"log",l.Type||"Log",l.Tekst));
   rows("dokumenter",c.SagsID).forEach(d => add(d.Dato,"doc",d.Titel||d.Filnavn||d.Type||"Dokument",[d.Type,d.Status].filter(Boolean).join(" · ")));
@@ -957,7 +957,22 @@ function applyDb(d, keepSelection=false){
   if(!keepSelection || !caseById(currentId)) currentId = db.sager.find(s => s.Slettet !== "Ja")?.SagsID || db.sager[0]?.SagsID || "";
   if(!keepSelection) selected.clear();
   workbookLoaded = true;
-  setDirty(false); hideBanner(); render(); renderDetail();
+  setDirty(false);
+  if(repairPhases()) setDirty(true);
+  hideBanner(); render(); renderDetail();
+}
+/* Retter faseskift, så de har samme dato som det tilhørende datofelt/anklageskrift */
+function repairPhases(){
+  let changed = false;
+  db.sager.forEach(c => {
+    if(!parseDate(c.TiltaleDato) && anklageskriftDate(c) && rows("faseforloeb", c.SagsID).some(x => x.Fase === "Tiltalt")){ c.TiltaleDato = anklageskriftDate(c); changed = true; }
+    Object.entries(PHASE_FIELD).forEach(([fase, f]) => {
+      const d = String(c[f] ?? "").slice(0,10); if(!parseDate(d)) return;
+      rows("faseforloeb", c.SagsID).forEach(x => { if(x.Fase === fase && String(x.Dato).slice(0,10) !== d){ x.Dato = d; changed = true; } });
+    });
+    if(changed) syncPhase(c.SagsID);
+  });
+  return changed;
 }
 function buildWorkbook(src=db){
   const wb = XLSX.utils.book_new();
@@ -1075,16 +1090,56 @@ function syncPhase(id){
   const c = caseById(id); if(!c) return;
   const r = rows("faseforloeb",id).filter(x => x.Fase && parseDate(x.Dato));
   if(!r.length) return;
-  r.sort((a,b) => String(a.Dato).localeCompare(String(b.Dato)) || lists.stages.indexOf(a.Fase) - lists.stages.indexOf(b.Fase));
+  // Sagens fase er den længst fremskredne fase (ikke den senest daterede)
+  r.sort((a,b) => lists.stages.indexOf(a.Fase) - lists.stages.indexOf(b.Fase) || String(a.Dato).localeCompare(String(b.Dato)));
   c.Fase = r[r.length-1].Fase;
 }
+/* Faser, der hænger sammen med et datofelt på sagen – så de altid viser samme dato */
+const PHASE_FIELD = {"Oprettet hos politiet":"KendtHosPolitiet", "Anholdt / grundlovsforhør":"AnholdtDato", "Sigtet":"SigtelsesDato", "Tiltalt":"TiltaleDato", "Afgjort":"DomDato"};
+const FIELD_PHASE = Object.fromEntries(Object.entries(PHASE_FIELD).map(([f,k]) => [k,f]));
+function anklageskriftDate(c){
+  const d = rows("dokumenter", c.SagsID).filter(x => x.Type === "Anklageskrift" && parseDate(x.Dato)).map(x => String(x.Dato).slice(0,10)).sort();
+  return d[0] || "";
+}
+function phaseDefaultDate(c, fase){
+  const f = PHASE_FIELD[fase];
+  if(f && parseDate(c[f])) return String(c[f]).slice(0,10);
+  if(fase === "Tiltalt" && anklageskriftDate(c)) return anklageskriftDate(c);
+  if(fase === "Anholdt / grundlovsforhør" && parseDate(c.Grundlovsforhoer)) return String(c.Grundlovsforhoer).slice(0,10);
+  if(["Hovedforhandling","Afgjort"].includes(fase)){
+    const type = fase === "Afgjort" ? /dom/i : /hovedforhandling/i;
+    const r = rows("retsmoeder", c.SagsID).filter(x => type.test(x.Type || "") && parseDate(x.Dato)).map(x => String(x.Dato).slice(0,10)).sort();
+    if(r.length) return fase === "Afgjort" ? r[r.length-1] : r[0];
+  }
+  return today();
+}
+/* Datofelt ændret → ret det tilhørende faseskift, så tidslinjen passer */
+function syncPhaseFromField(c, field){
+  const fase = FIELD_PHASE[field]; if(!fase) return false;
+  const d = String(c[field] ?? "").slice(0,10); if(!parseDate(d)) return false;
+  const r = rows("faseforloeb", c.SagsID).filter(x => x.Fase === fase);
+  if(!r.length) return false;
+  r.forEach(x => { x.Dato = d; x.Opdateret = nowIso(); });
+  syncPhase(c.SagsID);
+  return true;
+}
 function setPhase(id, fase, dato=today(), note=""){
-  const c = caseById(id); if(!c || !fase) return;
+  const c = caseById(id); if(!c || !fase) return false;
+  const ni = lists.stages.indexOf(fase);
+  const later = rows("faseforloeb", id).filter(x => lists.stages.indexOf(x.Fase) > ni);
+  if(later.length){
+    const names = [...new Set(later.map(x => x.Fase))].join(", ");
+    if(!confirm(`“${fase}” er en tidligere fase end sagens nuværende.\n\nVil du rykke sagen tilbage og fjerne de senere faseskift (${names})?`)) return false;
+    const ids = new Set(later.map(x => x.FaseID));
+    db.faseforloeb = db.faseforloeb.filter(x => !ids.has(x.FaseID));
+  }
   db.faseforloeb.push({FaseID:uid("FASE"), SagsID:id, Fase:fase, Dato:dato, Note:note, Oprettet:nowIso()});
+  const f = PHASE_FIELD[fase]; if(f && !parseDate(c[f])) c[f] = dato;
   syncPhase(id);
   c.Opdateret = nowIso();
   setDirty(true); render(); renderDetail();
   flash(`Fase: ${fase} (${fmtDate(dato)})`);
+  return true;
 }
 function askDate(msg, def=today()){
   const v = prompt(msg + "\n\nDato (ÅÅÅÅ-MM-DD eller DD-MM-ÅÅÅÅ):", def);
@@ -1099,7 +1154,7 @@ function askDate(msg, def=today()){
 }
 function pickPhase(fase){
   const c = current(); if(!c) return;
-  const d = askDate(`Sæt fasen til “${fase}”.\nHvornår skete det?`); if(!d) return;
+  const d = askDate(`Sæt fasen til “${fase}”.\nHvornår skete det?`, phaseDefaultDate(c, fase)); if(!d) return;
   setPhase(c.SagsID, fase, d, "");
 }
 function advancePhase(id){
@@ -1107,7 +1162,7 @@ function advancePhase(id){
   const i = lists.stages.indexOf(c.Fase);
   const next = lists.stages[Math.min(i+1, lists.stages.length-1)];
   if(next === c.Fase) return;
-  const d = askDate(`Ryk “${c.Titel||"sagen"}” videre til “${next}”.\nHvornår skete det?`); if(!d) return;
+  const d = askDate(`Ryk “${c.Titel||"sagen"}” videre til “${next}”.\nHvornår skete det?`, phaseDefaultDate(c, next)); if(!d) return;
   setPhase(id, next, d, "");
 }
 function addPhaseFromForm(){
@@ -1164,7 +1219,8 @@ function submitRow(sheet){
   const vals = Object.fromEntries(def.fields.map(([f,id]) => [f, $(id).value.trim()]));
   if(def.required && !vals[def.required]){ alert(def.reqMsg); $(def.fields.find(([f]) => f === def.required)[1]).focus(); return; }
   if(!def.fields.some(([f]) => vals[f]) ){ return; }
-  if(editing && editing.sheet === sheet){
+  const wasEdit = !!(editing && editing.sheet === sheet);
+  if(wasEdit){
     const r = db[sheet].find(x => x[def.key] === editing.id);
     if(r) Object.assign(r, vals, {Opdateret:nowIso()});
     editing = null;
@@ -1172,7 +1228,16 @@ function submitRow(sheet){
   } else {
     db[sheet].push({[def.key]:uid(def.prefix), SagsID:currentId, ...vals, Oprettet:nowIso()});
   }
-  if(sheet === "faseforloeb") syncPhase(currentId);
+  const c = current();
+  if(sheet === "faseforloeb"){
+    const f = PHASE_FIELD[vals.Fase];
+    if(f && parseDate(vals.Dato) && (wasEdit || !parseDate(c[f]))) c[f] = vals.Dato;   // faseskift og datofelt følges ad
+    syncPhase(currentId);
+  }
+  if(sheet === "dokumenter" && vals.Type === "Anklageskrift" && parseDate(vals.Dato) && !parseDate(c.TiltaleDato)){
+    c.TiltaleDato = vals.Dato; syncPhaseFromField(c, "TiltaleDato");
+    flash("“Tiltale rejst” er sat til anklageskriftets dato");
+  }
   touch(); setDirty(true); renderDetail(); render();
 }
 function editRow(sheet, id){
@@ -1477,10 +1542,16 @@ function renderDetail(){
   box.scrollTop = keep; lastDetailId = currentId;
 }
 function bindDetailInputs(){
+  const pf = $("ph_f");
+  if(pf) pf.addEventListener("change", () => { if(!(editing && editing.sheet === "faseforloeb")) $("ph_d").value = phaseDefaultDate(current(), pf.value); });
   document.querySelectorAll("#detail [id^='d_']").forEach(el => {
     const field = el.id.slice(2);
     if(field === "Fase"){
-      el.addEventListener("change", () => setPhase(currentId, el.value, today(), "Ændret i sagsoplysninger"));
+      el.addEventListener("change", () => {
+        const c = current(); const fase = el.value;
+        const d = askDate(`Sæt fasen til “${fase}”.\nHvornår skete det?`, phaseDefaultDate(c, fase));
+        if(!d || !setPhase(currentId, fase, d, "")) el.value = c.Fase;
+      });
       return;
     }
     el.addEventListener("input", () => {
@@ -1489,7 +1560,11 @@ function bindDetailInputs(){
       if(field === "Titel") $("caseTitle").textContent = el.value || "Uden titel";
       render();
     });
-    el.addEventListener("change", () => { const c = current(); const tl = $("tlBody"); if(c && tl) tl.innerHTML = timelineHtml(c); });
+    el.addEventListener("change", () => {
+      const c = current(); if(!c) return;
+      if(FIELD_PHASE[field] && syncPhaseFromField(c, field)){ render(); renderDetail(); return; }
+      const tl = $("tlBody"); if(tl) tl.innerHTML = timelineHtml(c);
+    });
   });
   document.querySelectorAll("#detail details").forEach(d => d.addEventListener("toggle", () => { d.open ? openSections.add(d.dataset.sec) : openSections.delete(d.dataset.sec); saveOpenSections(); }));
 }
@@ -1543,7 +1618,7 @@ function listPhases(){
 function formPhase(){
   const c = current(), si = lists.stages.indexOf(c.Fase);
   const next = lists.stages[Math.min(si+1, lists.stages.length-1)];
-  return `<div class="row">${select("ph_f","Fase",next,lists.stages)}${input("ph_d","Dato",today(),"date")}</div>${input("ph_n","Note (fx døgnrapport, pressemeddelelse, retslister)","")}<div class="actions"><button class="primary small" id="btn_faseforloeb" onclick="submitRow('faseforloeb')">Registrér fase</button></div><div class="notice">Sagens aktuelle fase følger altid det seneste faseskift – du kan også efterregistrere gamle faser.</div>`;
+  return `<div class="row">${select("ph_f","Fase",next,lists.stages)}${input("ph_d","Dato",phaseDefaultDate(c,next),"date")}</div>${input("ph_n","Note (fx døgnrapport, pressemeddelelse, retslister)","")}<div class="actions"><button class="primary small" id="btn_faseforloeb" onclick="submitRow('faseforloeb')">Registrér fase</button></div><div class="notice">Sagens aktuelle fase følger altid det seneste faseskift – du kan også efterregistrere gamle faser.</div>`;
 }
 function listJournals(){ return rows("journalnumre").map(j => `<div class="item"><strong>${esc(j.Journalnummer)}</strong> <span class="badge blue">${esc(j.Type)}</span><p>${esc(j.Note||"")}</p><div class="actions"><button class="ghost small" data-edit="journalnumre:${esc(j.JournalID)}" onclick="editRow('journalnumre',${jq(j.JournalID)})">Rediger</button><button class="ghost small" onclick="removeRow('journalnumre','JournalID',${jq(j.JournalID)})">Fjern</button></div></div>`).join("") || '<div class="empty">Ingen ekstra journalnumre.</div>'; }
 function formJournal(){ return `<div class="row">${input("jv","Journalnummer","")}${select("jt","Type","Politiets journalnummer",["Politiets journalnummer","Anklageskrift","Rettens sagsnummer","Ankenummer","Kommunalt journalnr.","Andet"])}</div>${textarea("jn","Note","")}<button class="primary small" id="btn_journalnumre" onclick="submitRow('journalnumre')">Tilføj journalnummer</button>`; }
